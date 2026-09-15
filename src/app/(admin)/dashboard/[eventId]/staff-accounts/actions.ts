@@ -114,6 +114,14 @@ export async function toggleStaffActive(id: string, eventId: string, active: boo
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
 }
 
+export async function deleteStaffCredential(id: string, eventId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("staff_credentials").delete().eq("id", id);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+}
+
 export async function getLoginQr(loginUrl: string) {
   return generateQrDataUrl(loginUrl);
 }

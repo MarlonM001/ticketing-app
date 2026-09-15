@@ -8,6 +8,7 @@ import {
   setStaffPay,
   grantCreditToAll,
   toggleStaffActive,
+  deleteStaffCredential,
   getLoginQr,
 } from "./actions";
 import { buildStaffCredentialsWhatsappUrl } from "@/lib/whatsapp";
@@ -259,6 +260,18 @@ export default function StaffAccountsClient({
     });
   }
 
+  function handleDelete(account: Account) {
+    if (!confirm(`¿Eliminar la cuenta "${account.username}"? Esta acción no se puede deshacer.`)) return;
+    setRowError(null);
+    startTransition(async () => {
+      try {
+        await deleteStaffCredential(account.id, eventId);
+      } catch (err) {
+        setRowError(err instanceof Error ? err.message : "No se pudo eliminar la cuenta");
+      }
+    });
+  }
+
   function handleRename(account: Account) {
     if (!renameValue.trim()) return;
     setRowError(null);
@@ -448,9 +461,16 @@ export default function StaffAccountsClient({
                 </button>
                 <button
                   onClick={() => startTransition(() => toggleStaffActive(account.id, eventId, !account.active))}
-                  className="rounded-md border border-red-500 px-3 py-1 text-sm text-red-400"
+                  className="rounded-md border border-neutral-700 px-3 py-1 text-sm"
                 >
                   {account.active ? "Desactivar" : "Activar"}
+                </button>
+                <button
+                  onClick={() => handleDelete(account)}
+                  disabled={isPending}
+                  className="rounded-md border border-red-500 px-3 py-1 text-sm text-red-400 disabled:opacity-50"
+                >
+                  Eliminar
                 </button>
               </div>
             </div>

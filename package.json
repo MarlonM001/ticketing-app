@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
+    "@supabase/server": "^1.6.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "html5-qrcode": "^2.3.8",
