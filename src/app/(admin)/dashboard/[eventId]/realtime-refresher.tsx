@@ -21,6 +21,16 @@ export default function RealtimeRefresher({ eventId }: { eventId: string }) {
         { event: "*", schema: "public", table: "tickets", filter: `event_id=eq.${eventId}` },
         () => router.refresh(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "product_sales", filter: `event_id=eq.${eventId}` },
+        () => router.refresh(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "staff_alerts", filter: `event_id=eq.${eventId}` },
+        () => router.refresh(),
+      )
       .subscribe();
 
     return () => {

@@ -22,10 +22,33 @@ export type EventReportData = {
   eventName: string;
   venue: string | null;
   generatedAt: string;
-  stats: { totalTickets: number; checkedIn: number; revenueCents: number };
+  stats: {
+    totalTickets: number;
+    checkedIn: number;
+    revenueCents: number;
+    barRevenueCents: number;
+    totalRevenueCents: number;
+  };
   breakdown: { name: string; qty: number; revenueCents: number }[];
   rrpp: { name: string; totalTickets: number; usedTickets: number; revenueCents: number }[];
   attendees: { name: string; ticketType: string; scannedAt: string }[];
+  products: { name: string; qty: number; courtesyQty: number; revenueCents: number }[];
+  staffAttendance: { role: string; total: number; checkedIn: number }[];
+  staffSettlement: {
+    username: string;
+    role: string;
+    payCents: number;
+    consumedCents: number;
+    creditCents: number;
+    netPayCents: number;
+  }[];
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  puerta: "Puerta",
+  caja: "Caja",
+  mesero: "Mesero",
+  dj: "DJ",
 };
 
 export function EventReportDocument({ data }: { data: EventReportData }) {
@@ -40,9 +63,20 @@ export function EventReportDocument({ data }: { data: EventReportData }) {
 
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Ventas</Text>
+            <Text style={styles.statLabel}>Ventas de entradas</Text>
             <Text style={styles.statValue}>{ars(data.stats.revenueCents)}</Text>
           </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Consumo de barra (pagado)</Text>
+            <Text style={styles.statValue}>{ars(data.stats.barRevenueCents)}</Text>
+          </View>
+          <View style={[styles.statBox, { marginRight: 0 }]}>
+            <Text style={styles.statLabel}>Total general</Text>
+            <Text style={styles.statValue}>{ars(data.stats.totalRevenueCents)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Entradas vendidas</Text>
             <Text style={styles.statValue}>{data.stats.totalTickets}</Text>
@@ -86,6 +120,68 @@ export function EventReportDocument({ data }: { data: EventReportData }) {
                 <Text style={styles.col}>{r.totalTickets}</Text>
                 <Text style={styles.col}>{r.usedTickets}</Text>
                 <Text style={styles.col}>{ars(r.revenueCents)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.products.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Consumo en barra</Text>
+            <View style={styles.tableHeaderRow}>
+              <Text style={styles.col}>Producto</Text>
+              <Text style={styles.col}>Cantidad</Text>
+              <Text style={styles.col}>Cortesías (libre)</Text>
+              <Text style={styles.col}>Recaudación</Text>
+            </View>
+            {data.products.map((p, i) => (
+              <View key={i} style={styles.tableRow}>
+                <Text style={styles.col}>{p.name}</Text>
+                <Text style={styles.col}>{p.qty}</Text>
+                <Text style={styles.col}>{p.courtesyQty > 0 ? p.courtesyQty : "—"}</Text>
+                <Text style={styles.col}>{ars(p.revenueCents)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.staffSettlement.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Staff — sueldos y descuentos</Text>
+            <View style={styles.tableHeaderRow}>
+              <Text style={styles.col}>Usuario</Text>
+              <Text style={styles.col}>Rol</Text>
+              <Text style={styles.col}>Sueldo</Text>
+              <Text style={styles.col}>Descuento (consumo)</Text>
+              <Text style={styles.col}>Crédito sin usar</Text>
+              <Text style={styles.col}>Neto a pagar</Text>
+            </View>
+            {data.staffSettlement.map((s, i) => (
+              <View key={i} style={styles.tableRow}>
+                <Text style={styles.col}>{s.username}</Text>
+                <Text style={styles.col}>{ROLE_LABEL[s.role] ?? s.role}</Text>
+                <Text style={styles.col}>{ars(s.payCents)}</Text>
+                <Text style={styles.col}>{ars(s.consumedCents)}</Text>
+                <Text style={styles.col}>{ars(s.creditCents)}</Text>
+                <Text style={styles.col}>{ars(s.netPayCents)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {data.staffAttendance.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Asistencia de staff</Text>
+            <View style={styles.tableHeaderRow}>
+              <Text style={styles.col}>Rol</Text>
+              <Text style={styles.col}>Presentes</Text>
+              <Text style={styles.col}>Total</Text>
+            </View>
+            {data.staffAttendance.map((s, i) => (
+              <View key={i} style={styles.tableRow}>
+                <Text style={styles.col}>{ROLE_LABEL[s.role] ?? s.role}</Text>
+                <Text style={styles.col}>{s.checkedIn}</Text>
+                <Text style={styles.col}>{s.total}</Text>
               </View>
             ))}
           </View>

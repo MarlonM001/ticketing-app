@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 const ticketTypeSchema = z.object({
@@ -23,6 +24,37 @@ const createEventSchema = z.object({
 });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+// Productos típicos de barra para que el evento no arranque vacío. El
+// organizador les pone precio real (quedan en $0) y puede sumar o borrar
+// desde "Productos" cuando quiera.
+const DEFAULT_BAR_PRODUCTS = [
+  "Cerveza",
+  "Cerveza Michelada",
+  "Gaseosa",
+  "Agua",
+  "Agua Saborizada",
+  "Jugo",
+  "Energizante",
+  "Hielo",
+  "Aguardiente Botella",
+  "Aguardiente Shot",
+  "Ron Botella",
+  "Ron Shot",
+  "Whisky Botella",
+  "Whisky Shot",
+  "Vodka Botella",
+  "Vodka Shot",
+  "Tequila Botella",
+  "Tequila Shot",
+  "Mojito",
+  "Piña Colada",
+  "Margarita",
+  "Cuba Libre",
+  "Trago Mixto",
+  "Cigarrillos",
+  "Picada",
+];
 
 export async function createEvent(input: CreateEventInput) {
   const parsed = createEventSchema.parse(input);
@@ -66,5 +98,38 @@ export async function createEvent(input: CreateEventInput) {
     throw new Error(typesError.message);
   }
 
+  const { error: productsError } = await supabase.from("products").insert(
+    DEFAULT_BAR_PRODUCTS.map((name, index) => ({
+      event_id: event.id,
+      name,
+      price_cents: 0,
+      sort_order: index,
+    })),
+  );
+
+  if (productsError) {
+    throw new Error(productsError.message);
+  }
+
   return { eventId: event.id as string };
+}
+
+// Borra el evento y todo lo que cuelga de él (entradas, ventas, staff,
+// etc.) por los "on delete cascade" del esquema. Es irreversible.
+export async function deleteEvent(eventId: string) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const { error } = await supabase
+    .from("events")
+    .delete()
+    .eq("id", eventId)
+    .eq("created_by", user.id);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/dashboard");
 }

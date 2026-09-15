@@ -23,8 +23,6 @@ export default function CheckoutForm({
   const [step, setStep] = useState<Step>("detalles");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [idNumber, setIdNumber] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -45,8 +43,6 @@ export default function CheckoutForm({
           refCode,
           name,
           phone,
-          email,
-          idNumber,
         });
         router.push(`/e/${eventSlug}/confirmacion/${ticketId}`);
       } catch (err) {
@@ -88,23 +84,6 @@ export default function CheckoutForm({
               className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm text-neutral-400">Email (opcional)</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm text-neutral-400">DNI (opcional)</label>
-            <input
-              value={idNumber}
-              onChange={(e) => setIdNumber(e.target.value)}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2"
-            />
-          </div>
           <button
             type="submit"
             className="w-full rounded-md bg-lime-500 px-3 py-2 font-medium text-neutral-950"
@@ -125,12 +104,6 @@ export default function CheckoutForm({
               <span className="text-neutral-500">Teléfono: </span>
               {phone}
             </p>
-            {email && (
-              <p>
-                <span className="text-neutral-500">Email: </span>
-                {email}
-              </p>
-            )}
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}

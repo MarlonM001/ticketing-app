@@ -10,8 +10,6 @@ const checkoutSchema = z.object({
   refCode: z.string().optional(),
   name: z.string().min(1, "Requerido"),
   phone: z.string().min(1, "Requerido"),
-  email: z.string().email().optional().or(z.literal("")),
-  idNumber: z.string().optional(),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
@@ -56,8 +54,6 @@ export async function createTicket(input: CheckoutInput) {
     .insert({
       name: parsed.name,
       phone: parsed.phone,
-      email: parsed.email || null,
-      id_number: parsed.idNumber || null,
     })
     .select("id")
     .single();

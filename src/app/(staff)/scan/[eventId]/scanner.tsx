@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { scanTicket, type ScanResult } from "./actions";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { scanTicket, raiseAlert, type ScanResult } from "./actions";
+import OrderPanel from "../../order-panel";
+import CreditBanner from "../../credit-banner";
+import RoleIcon from "@/components/role-icon";
+
+type Product = { id: string; name: string; price_cents: number; stock_quantity: number | null };
 
 const STATE_STYLES: Record<ScanResult["result"], { label: string; className: string }> = {
   ok: { label: "OK — INGRESAR", className: "bg-lime-600 border-lime-400" },
@@ -10,12 +15,53 @@ const STATE_STYLES: Record<ScanResult["result"], { label: string; className: str
   invalid: { label: "QR INVÁLIDO", className: "bg-neutral-700 border-neutral-500" },
 };
 
-export default function Scanner() {
+export default function Scanner({
+  products,
+  creditCents,
+  creditMessage,
+}: {
+  products: Product[];
+  creditCents: number;
+  creditMessage: string | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerInstance = useRef<import("html5-qrcode").Html5QrcodeScanner | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [alertSent, setAlertSent] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
+  const [isAlerting, startAlertTransition] = useTransition();
   const busyRef = useRef(false);
+
+  function sendAlert() {
+    startAlertTransition(async () => {
+      try {
+        await raiseAlert();
+        setAlertSent(true);
+        setTimeout(() => setAlertSent(false), 3000);
+      } catch {
+        // no-op: el botón de alerta no debe bloquear el escaneo
+      }
+    });
+  }
+
+  const floatingButtons = (
+    <>
+      <button
+        onClick={() => setOrderOpen(true)}
+        className="fixed bottom-4 left-4 z-10 rounded-full bg-neutral-800 px-4 py-3 text-sm font-bold text-white shadow-lg"
+      >
+        🍺 Pedir algo
+      </button>
+      <button
+        onClick={sendAlert}
+        disabled={isAlerting}
+        className="fixed bottom-4 right-4 z-10 rounded-full bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg disabled:opacity-50"
+      >
+        {alertSent ? "Alerta enviada ✓" : "🚨 Alertar"}
+      </button>
+    </>
+  );
 
   useEffect(() => {
     if (result) return; // no re-render scanner while showing a result
@@ -63,6 +109,17 @@ export default function Scanner() {
     };
   }, [result]);
 
+  if (orderOpen) {
+    return (
+      <OrderPanel
+        products={products}
+        creditCents={creditCents}
+        creditMessage={creditMessage}
+        onClose={() => setOrderOpen(false)}
+      />
+    );
+  }
+
   if (error) {
     return (
       <div className="p-6 text-center text-red-400">
@@ -76,6 +133,7 @@ export default function Scanner() {
         >
           Reintentar
         </button>
+        {floatingButtons}
       </div>
     );
   }
@@ -99,13 +157,20 @@ export default function Scanner() {
         >
           Escanear siguiente
         </button>
+        {floatingButtons}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-neutral-950 p-4 text-white">
+      <p className="mb-3 flex items-center gap-1.5 text-sm text-neutral-400">
+        <RoleIcon role="puerta" className="h-4 w-4 text-lime-400" />
+        Puerta
+      </p>
+      <CreditBanner creditCents={creditCents} creditMessage={creditMessage} />
       <div id="qr-reader" ref={containerRef} />
+      {floatingButtons}
     </div>
   );
 }

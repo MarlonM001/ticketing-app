@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import RealtimeRefresher from "./realtime-refresher";
 import TypeBreakdownChart from "./type-breakdown-chart";
+import AlertsBanner from "./alerts-banner";
+import StatCard from "./stat-card";
 
 export default async function EventDashboardPage({
   params,
@@ -11,18 +13,38 @@ export default async function EventDashboardPage({
   const { eventId } = await params;
   const supabase = await createClient();
 
-  const [{ data: event }, { data: stats }, { data: breakdown }, { data: staffStats }, { data: pendingCount }] =
-    await Promise.all([
-      supabase.from("events").select("name").eq("id", eventId).single(),
-      supabase.from("event_stats").select("*").eq("event_id", eventId).maybeSingle(),
-      supabase
-        .from("ticket_type_breakdown")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("sort_order"),
-      supabase.from("staff_checkin_stats").select("*").eq("event_id", eventId).maybeSingle(),
-      supabase.from("pending_tickets").select("ticket_id").eq("event_id", eventId),
-    ]);
+  const [
+    { data: event },
+    { data: stats },
+    { data: breakdown },
+    { data: staffStats },
+    { data: pendingCount },
+    { data: alerts },
+    { data: productSales },
+    { data: attendance },
+  ] = await Promise.all([
+    supabase.from("events").select("name").eq("id", eventId).single(),
+    supabase.from("event_stats").select("*").eq("event_id", eventId).maybeSingle(),
+    supabase
+      .from("ticket_type_breakdown")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("sort_order"),
+    supabase.from("staff_checkin_stats").select("*").eq("event_id", eventId).maybeSingle(),
+    supabase.from("pending_tickets").select("ticket_id").eq("event_id", eventId),
+    supabase
+      .from("staff_alerts")
+      .select("id, label, reason, created_at")
+      .eq("event_id", eventId)
+      .eq("resolved", false)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("product_sales_summary")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("sort_order"),
+    supabase.from("staff_attendance_stats").select("*").eq("event_id", eventId),
+  ]);
 
   const totalTickets = stats?.total_tickets ?? 0;
   const checkedIn = stats?.checked_in_count ?? 0;
@@ -32,34 +54,90 @@ export default async function EventDashboardPage({
   const pendingN = pendingCount?.length ?? 0;
 
   const totalQty = (breakdown ?? []).reduce((acc, b) => acc + b.qty, 0);
+  const barRevenue = (productSales ?? []).reduce((acc, p) => acc + p.revenue_cents, 0);
+
+  const ROLE_LABEL: Record<string, string> = { puerta: "Puerta", caja: "Caja", mesero: "Mesero", dj: "DJ" };
 
   return (
     <div className="max-w-4xl space-y-6">
       <RealtimeRefresher eventId={eventId} />
 
-      <div className="flex items-center justify-between">
+      <AlertsBanner eventId={eventId} alerts={alerts ?? []} />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold">{event?.name}</h1>
-        <div className="flex gap-3 text-sm">
-          <Link href={`/dashboard/${eventId}/pendientes`} className="text-amber-400">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <Link
+            href={`/dashboard/${eventId}/pendientes`}
+            className="rounded-md border border-amber-700/60 bg-amber-950/30 px-3 py-1.5 text-amber-400 transition hover:border-amber-500"
+          >
             Pendientes {pendingN > 0 && `(${pendingN})`}
           </Link>
-          <Link href={`/dashboard/${eventId}/rrpp`} className="text-lime-400">
+          <Link
+            href={`/dashboard/${eventId}/venta-manual`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
+            Venta manual
+          </Link>
+          <Link
+            href={`/dashboard/${eventId}/invitados`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
+            Invitados
+          </Link>
+          <Link
+            href={`/dashboard/${eventId}/rrpp`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
             RRPP
           </Link>
-          <Link href={`/dashboard/${eventId}/staff-links`} className="text-lime-400">
-            Links de staff
+          <Link
+            href={`/dashboard/${eventId}/productos`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
+            Productos
           </Link>
-          <a href={`/api/reports/${eventId}`} className="text-lime-400">
+          <Link
+            href={`/dashboard/${eventId}/staff-accounts`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
+            Cuentas de staff
+          </Link>
+          <a
+            href={`/api/reports/${eventId}`}
+            className="rounded-md border border-lime-600 bg-lime-500/10 px-3 py-1.5 font-medium text-lime-400 transition hover:bg-lime-500/20"
+          >
             Descargar reporte
           </a>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Ventas" value={`$${(revenue / 100).toLocaleString("es-AR")}`} />
-        <StatCard label="Asistencia" value={`${checkedIn} / ${totalTickets}`} />
-        <StatCard label="Staff" value={`${staffCheckedIn} / ${staffTotal}`} />
-        <StatCard label="Pendientes" value={String(pendingN)} />
+        <StatCard
+          label="Ventas"
+          value={`$${(revenue / 100).toLocaleString("es-AR")}`}
+          description="Total recaudado por entradas aprobadas (pagas y confirmadas), sin contar el consumo de barra."
+        />
+        <StatCard
+          label="Asistencia"
+          value={`${checkedIn} / ${totalTickets}`}
+          description="Invitados que ya escanearon su entrada en la puerta, sobre el total de entradas vendidas."
+        />
+        <StatCard
+          label="Staff"
+          value={`${staffCheckedIn} / ${staffTotal}`}
+          description="Entradas de cortesía para staff (tipo marcado como 'staff') que ya ingresaron, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ."
+        />
+        <StatCard
+          label="Pendientes"
+          value={String(pendingN)}
+          description="Entradas ya generadas que todavía esperan que el organizador confirme el pago."
+        />
+        <StatCard
+          label="Consumo barra"
+          value={`$${(barRevenue / 100).toLocaleString("es-AR")}`}
+          description="Total recaudado por venta de productos (bebidas, comida, etc.) registrada desde Caja."
+        />
       </div>
 
       <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
@@ -93,15 +171,54 @@ export default async function EventDashboardPage({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-      <p className="text-xs uppercase text-neutral-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium uppercase text-neutral-400">Consumo de barra</h2>
+        {(productSales ?? []).filter((p) => p.qty_sold > 0).length === 0 ? (
+          <p className="text-sm text-neutral-500">Todavía no hay ventas de productos.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-700 text-neutral-500">
+                <th className="pb-2">Producto</th>
+                <th className="pb-2">Cantidad</th>
+                <th className="pb-2">Recaudación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(productSales ?? [])
+                .filter((p) => p.qty_sold > 0)
+                .map((p) => (
+                  <tr key={p.product_id} className="border-b border-neutral-800">
+                    <td className="py-2">{p.name}</td>
+                    <td className="py-2">{p.qty_sold}</td>
+                    <td className="py-2">${(p.revenue_cents / 100).toLocaleString("es-AR")}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+        <h2 className="mb-3 text-sm font-medium uppercase text-neutral-400">
+          Asistencia del equipo
+        </h2>
+        {(attendance ?? []).length === 0 ? (
+          <p className="text-sm text-neutral-500">No hay cuentas de staff creadas.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(attendance ?? []).map((a) => (
+              <StatCard
+                key={a.role}
+                label={ROLE_LABEL[a.role] ?? a.role}
+                value={`${a.checked_in} / ${a.total}`}
+                description={`Cuentas de ${ROLE_LABEL[a.role] ?? a.role} activas que ya se usaron para ingresar al menos una vez, sobre el total de cuentas activas de ese rol.`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

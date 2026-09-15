@@ -5,9 +5,9 @@ import { verifyStaffSession, STAFF_COOKIE_NAME } from "@/lib/staff-session";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const scanMatch = pathname.match(/^\/scan\/([^/]+)/);
-  if (scanMatch) {
-    const eventId = scanMatch[1];
+  const staffMatch = pathname.match(/^\/(scan|caja)\/([^/]+)/);
+  if (staffMatch) {
+    const eventId = staffMatch[2];
     const token = request.cookies.get(STAFF_COOKIE_NAME)?.value;
     const session = token ? await verifyStaffSession(token) : null;
 
@@ -25,5 +25,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/scan/:path*"],
+  matcher: ["/dashboard/:path*", "/scan/:path*", "/caja/:path*"],
 };
