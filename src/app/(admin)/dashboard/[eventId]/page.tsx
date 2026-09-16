@@ -122,7 +122,8 @@ export default async function EventDashboardPage({
         <StatCard
           label="Ventas"
           value={`$${(revenue / 100).toLocaleString("es-AR")}`}
-          description="Total recaudado por entradas aprobadas (pagas y confirmadas), sin contar el consumo de barra."
+          description="Total recaudado por entradas aprobadas (pagas y confirmadas), sin contar el consumo de barra. Tocá para ver el detalle por tipo."
+          href="#distribucion"
         />
         <StatCard
           label="Asistencia"
@@ -133,21 +134,24 @@ export default async function EventDashboardPage({
         <StatCard
           label="Staff"
           value={`${staffCheckedIn} / ${staffTotal}`}
-          description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ."
+          description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ. Tocá para ver el detalle."
+          href={`/dashboard/${eventId}/asistencia?tipo=staff`}
         />
         <StatCard
           label="Pendientes"
           value={String(pendingN)}
-          description="Entradas ya generadas que todavía esperan que el organizador confirme el pago."
+          description="Entradas ya generadas que todavía esperan que el organizador confirme el pago. Tocá para revisarlas."
+          href={`/dashboard/${eventId}/pendientes`}
         />
         <StatCard
           label="Consumo barra"
           value={`$${(barRevenue / 100).toLocaleString("es-AR")}`}
-          description="Total recaudado por venta de productos (bebidas, comida, etc.) registrada desde Caja."
+          description="Total recaudado por venta de productos (bebidas, comida, etc.) registrada desde Caja. Tocá para ver el detalle por producto."
+          href="#consumo-barra"
         />
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+      <div id="distribucion" className="scroll-mt-4 rounded-xl border border-neutral-800 bg-neutral-900 p-4">
         <h2 className="mb-3 text-sm font-medium uppercase text-neutral-400">
           Distribución por tipo
         </h2>
@@ -179,7 +183,7 @@ export default async function EventDashboardPage({
         </table>
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+      <div id="consumo-barra" className="scroll-mt-4 rounded-xl border border-neutral-800 bg-neutral-900 p-4">
         <h2 className="mb-3 text-sm font-medium uppercase text-neutral-400">Consumo de barra</h2>
         {(productSales ?? []).filter((p) => p.qty_sold > 0).length === 0 ? (
           <p className="text-sm text-neutral-500">Todavía no hay ventas de productos.</p>

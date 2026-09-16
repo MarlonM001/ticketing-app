@@ -35,6 +35,11 @@ export default function QrScanner({
   const html5QrCodeRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const onScanRef = useRef(onScan);
   const lastQrCodeRef = useRef<string | null>(null);
+  // La cámara arranca solo cuando el usuario toca "Escanear QR" — no se
+  // reactiva sola después de mostrar un resultado, hay que volver a tocar
+  // el botón cada vez. Esto evita que la cámara quede prendida sin uso y
+  // hace que cualquier falla de cámara quede acotada a un solo intento.
+  const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -46,7 +51,7 @@ export default function QrScanner({
   }, [onScan]);
 
   useEffect(() => {
-    if (result) return; // no re-render scanner while showing un resultado
+    if (!scanning) return;
 
     let cancelled = false;
 
@@ -71,6 +76,7 @@ export default function QrScanner({
           } catch {
             // no-op
           }
+          setScanning(false);
           lastQrCodeRef.current = decodedText;
           try {
             const res = await onScanRef.current(decodedText);
@@ -92,6 +98,7 @@ export default function QrScanner({
       ).catch((err) => {
         if (cancelled) return;
         const name = err instanceof Error ? err.name : "";
+        setScanning(false);
         setCameraError(
           name === "NotAllowedError"
             ? "Se necesita permiso de cámara para escanear. Habilitalo en los ajustes del navegador y volvé a intentar."
@@ -104,7 +111,7 @@ export default function QrScanner({
       cancelled = true;
       html5QrCodeRef.current?.stop().catch(() => {});
     };
-  }, [result]);
+  }, [scanning]);
 
   async function forceReentry() {
     const qrCode = lastQrCodeRef.current;
@@ -124,16 +131,19 @@ export default function QrScanner({
     }
   }
 
+  function reset() {
+    setError(null);
+    setResult(null);
+    setCameraError(null);
+  }
+
   if (error) {
     return (
-      <div className="p-6 text-center text-red-400">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center text-red-400">
         {error}
         <button
-          onClick={() => {
-            setError(null);
-            setResult(null);
-          }}
-          className="mt-4 block w-full rounded-md border border-neutral-700 px-3 py-2 text-white"
+          onClick={reset}
+          className="mt-2 block w-full max-w-xs rounded-md border border-neutral-700 px-3 py-2 text-white"
         >
           Reintentar
         </button>
@@ -166,7 +176,7 @@ export default function QrScanner({
               {forcing ? "Ingresando..." : "Ingresar de todas formas"}
             </button>
             <button
-              onClick={() => setResult(null)}
+              onClick={reset}
               disabled={forcing}
               className="rounded-md border border-white/60 px-6 py-3 font-medium text-white disabled:opacity-50"
             >
@@ -175,7 +185,7 @@ export default function QrScanner({
           </div>
         ) : (
           <button
-            onClick={() => setResult(null)}
+            onClick={reset}
             className="mt-4 rounded-md bg-white px-6 py-3 font-medium text-neutral-950"
           >
             Escanear siguiente
@@ -186,15 +196,44 @@ export default function QrScanner({
     );
   }
 
+  if (!scanning) {
+    return (
+      <div className="flex min-h-screen flex-col bg-neutral-950 p-4 text-white">
+        {header}
+        {cameraError && (
+          <div className="mb-3 rounded-md border border-red-700 bg-red-950/30 p-3 text-sm text-red-300">
+            {cameraError}
+          </div>
+        )}
+        <div className="flex flex-1 items-center justify-center">
+          <button
+            onClick={() => setScanning(true)}
+            className="flex h-40 w-40 flex-col items-center justify-center gap-2 rounded-full bg-lime-500 text-neutral-950 shadow-lg transition active:scale-95"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-10 w-10">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01" />
+            </svg>
+            <span className="text-sm font-bold">Escanear QR</span>
+          </button>
+        </div>
+        {floatingButtons}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-950 p-4 text-white">
       {header}
-      {cameraError && (
-        <div className="mb-3 rounded-md border border-red-700 bg-red-950/30 p-3 text-sm text-red-300">
-          {cameraError}
-        </div>
-      )}
       <div id="qr-reader" ref={containerRef} className="overflow-hidden rounded-lg" />
+      <button
+        onClick={() => setScanning(false)}
+        className="mt-3 w-full rounded-md border border-neutral-700 px-3 py-2 text-sm"
+      >
+        Cancelar
+      </button>
       {floatingButtons}
     </div>
   );
