@@ -25,17 +25,23 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3 sm:px-6 sm:py-4">
-        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-          <span className="font-semibold">Panel</span>
-          <EventSwitcher events={events ?? []} />
-          <Link href="/dashboard/eventos/nuevo" className="text-sm text-lime-400">
-            + Nuevo evento
-          </Link>
+      <header className="border-b border-neutral-800 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span className="font-semibold">Panel</span>
+            <EventSwitcher events={events ?? []} />
+            <Link href="/dashboard/eventos/nuevo" className="text-sm text-lime-400">
+              + Nuevo evento
+            </Link>
+          </div>
+          <SignOutButton />
         </div>
-        <SignOutButton />
       </header>
-      <main className="p-4 sm:p-6">{children}</main>
+      <main className="p-4 sm:p-6">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4 sm:p-8 [&>*]:mx-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
