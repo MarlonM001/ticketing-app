@@ -13,6 +13,14 @@ const STATE_STYLES: Record<ScanResult["result"], { label: string; className: str
   invalid: { label: "QR INVÁLIDO", className: "bg-neutral-700 border-neutral-500" },
 };
 
+// Tamaño de la caja de escaneo en función del viewfinder real (no un valor
+// fijo en px): con un valor fijo como 250 la librería se rompe en pantallas
+// angostas de celular y deja de detectar QR ("no hace nada" al escanear).
+function qrboxSize(viewfinderWidth: number, viewfinderHeight: number) {
+  const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+  return { width: Math.max(size, 180), height: Math.max(size, 180) };
+}
+
 export default function QrScanner({
   onScan,
   header,
@@ -23,10 +31,11 @@ export default function QrScanner({
   floatingButtons?: React.ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scannerInstance = useRef<import("html5-qrcode").Html5QrcodeScanner | null>(null);
+  const html5QrCodeRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const onScanRef = useRef(onScan);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const busyRef = useRef(false);
 
   useEffect(() => {
@@ -34,26 +43,28 @@ export default function QrScanner({
   }, [onScan]);
 
   useEffect(() => {
-    if (result) return; // no re-render scanner while showing a result
+    if (result) return; // no re-render scanner while showing un resultado
 
     let cancelled = false;
 
-    import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
+    import("html5-qrcode").then(({ Html5Qrcode }) => {
       if (cancelled || !containerRef.current) return;
+      setCameraError(null);
 
-      const scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: 250 },
-        false,
-      );
-      scannerInstance.current = scanner;
+      const qr = new Html5Qrcode("qr-reader", { verbose: false });
+      html5QrCodeRef.current = qr;
 
-      scanner.render(
+      qr.start(
+        // Fuerza la cámara trasera: con la UI por defecto de la librería el
+        // staff tenía que elegir cámara de un dropdown y a veces quedaba en
+        // la frontal, que apunta para el lado que no es.
+        { facingMode: "environment" },
+        { fps: 10, qrbox: qrboxSize },
         async (decodedText) => {
           if (busyRef.current) return;
           busyRef.current = true;
           try {
-            await scanner.clear();
+            await qr.stop();
           } catch {
             // no-op
           }
@@ -74,12 +85,20 @@ export default function QrScanner({
           // errores de decodificación frame a frame: se ignoran (es normal
           // mientras la cámara no encuentra un QR en foco)
         },
-      );
+      ).catch((err) => {
+        if (cancelled) return;
+        const name = err instanceof Error ? err.name : "";
+        setCameraError(
+          name === "NotAllowedError"
+            ? "Se necesita permiso de cámara para escanear. Habilitalo en los ajustes del navegador y volvé a intentar."
+            : "No se pudo acceder a la cámara. Revisá que ningún otro sitio la esté usando.",
+        );
+      });
     });
 
     return () => {
       cancelled = true;
-      scannerInstance.current?.clear().catch(() => {});
+      html5QrCodeRef.current?.stop().catch(() => {});
     };
   }, [result]);
 
@@ -128,7 +147,12 @@ export default function QrScanner({
   return (
     <div className="min-h-screen bg-neutral-950 p-4 text-white">
       {header}
-      <div id="qr-reader" ref={containerRef} />
+      {cameraError && (
+        <div className="mb-3 rounded-md border border-red-700 bg-red-950/30 p-3 text-sm text-red-300">
+          {cameraError}
+        </div>
+      )}
+      <div id="qr-reader" ref={containerRef} className="overflow-hidden rounded-lg" />
       {floatingButtons}
     </div>
   );
