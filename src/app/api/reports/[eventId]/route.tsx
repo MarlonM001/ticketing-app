@@ -1,6 +1,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getInventoryRows } from "@/lib/inventory";
 import { EventReportDocument, type EventReportData } from "@/lib/pdf/event-report";
 
 export const runtime = "nodejs";
@@ -25,7 +26,7 @@ export async function GET(
     { data: breakdown },
     { data: rrppStats },
     { data: scans },
-    { data: productSales },
+    inventoryRows,
     { data: attendance },
     { data: settlement },
   ] = await Promise.all([
@@ -39,10 +40,7 @@ export async function GET(
       .eq("event_id", eventId)
       .eq("direction", "in")
       .order("scanned_at"),
-    supabase
-      .from("product_sales")
-      .select("quantity, unit_price_cents, is_courtesy, products(name, stock_quantity)")
-      .eq("event_id", eventId),
+    getInventoryRows(eventId),
     supabase.from("staff_attendance_stats").select("*").eq("event_id", eventId),
     supabase
       .from("staff_settlement")
@@ -56,28 +54,7 @@ export async function GET(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  // El stock actual del producto ya es el "final" (se descuenta en cada
-  // venta); el "inicial" se reconstruye sumándole lo vendido, sin
-  // necesidad de guardar un snapshot aparte.
-  const productTotals = new Map<
-    string,
-    { qty: number; courtesyQty: number; revenueCents: number; finalStock: number | null }
-  >();
-  for (const row of productSales ?? []) {
-    const product = row.products as unknown as { name: string; stock_quantity: number | null } | null;
-    const productName = product?.name ?? "—";
-    const entry =
-      productTotals.get(productName) ??
-      { qty: 0, courtesyQty: 0, revenueCents: 0, finalStock: product?.stock_quantity ?? null };
-    entry.qty += row.quantity;
-    if (row.is_courtesy) {
-      entry.courtesyQty += row.quantity;
-    } else {
-      entry.revenueCents += row.quantity * row.unit_price_cents;
-    }
-    productTotals.set(productName, entry);
-  }
-  const barRevenueCents = [...productTotals.values()].reduce((acc, p) => acc + p.revenueCents, 0);
+  const barRevenueCents = inventoryRows.reduce((acc, p) => acc + p.revenueCents, 0);
   const ticketRevenueCents = stats?.total_revenue_cents ?? 0;
 
   const data: EventReportData = {
@@ -113,12 +90,12 @@ export async function GET(
         scannedAt: s.scanned_at,
       };
     }),
-    products: [...productTotals.entries()].map(([name, p]) => ({
-      name,
-      qty: p.qty,
+    products: inventoryRows.map((p) => ({
+      name: p.name,
+      qty: p.qtySold,
       courtesyQty: p.courtesyQty,
       revenueCents: p.revenueCents,
-      initialStock: p.finalStock === null ? null : p.finalStock + p.qty,
+      initialStock: p.initialStock,
       finalStock: p.finalStock,
     })),
     staffAttendance: (attendance ?? []).map((a) => ({

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getInventoryRows, sumInventoryTotals } from "@/lib/inventory";
 
 export default async function InventarioPage({
   params,
@@ -7,55 +7,8 @@ export default async function InventarioPage({
   params: Promise<{ eventId: string }>;
 }) {
   const { eventId } = await params;
-  const supabase = await createClient();
-
-  const [{ data: products }, { data: salesSummary }, { data: courtesyRows }] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id, name, stock_quantity, active")
-      .eq("event_id", eventId)
-      .order("sort_order")
-      .order("created_at"),
-    supabase.from("product_sales_summary").select("*").eq("event_id", eventId),
-    supabase
-      .from("product_sales")
-      .select("product_id, quantity")
-      .eq("event_id", eventId)
-      .eq("is_courtesy", true),
-  ]);
-
-  const salesByProduct = new Map(
-    (salesSummary ?? []).map((s) => [s.product_id, { qtySold: s.qty_sold, revenueCents: s.revenue_cents }]),
-  );
-  const courtesyByProduct = new Map<string, number>();
-  for (const row of courtesyRows ?? []) {
-    courtesyByProduct.set(row.product_id, (courtesyByProduct.get(row.product_id) ?? 0) + row.quantity);
-  }
-
-  const rows = (products ?? []).map((p) => {
-    const sales = salesByProduct.get(p.id) ?? { qtySold: 0, revenueCents: 0 };
-    const finalStock = p.stock_quantity;
-    const initialStock = finalStock === null ? null : finalStock + sales.qtySold;
-    return {
-      id: p.id,
-      name: p.name,
-      active: p.active,
-      initialStock,
-      finalStock,
-      qtySold: sales.qtySold,
-      courtesyQty: courtesyByProduct.get(p.id) ?? 0,
-      revenueCents: sales.revenueCents,
-    };
-  });
-
-  const totals = rows.reduce(
-    (acc, r) => ({
-      qtySold: acc.qtySold + r.qtySold,
-      courtesyQty: acc.courtesyQty + r.courtesyQty,
-      revenueCents: acc.revenueCents + r.revenueCents,
-    }),
-    { qtySold: 0, courtesyQty: 0, revenueCents: 0 },
-  );
+  const rows = await getInventoryRows(eventId);
+  const totals = sumInventoryTotals(rows);
 
   return (
     <div>
@@ -67,7 +20,7 @@ export default async function InventarioPage({
       </div>
       <p className="mb-4 max-w-xl text-sm text-neutral-400">
         Comparativo de stock inicial contra lo que quedó, para llevar la trazabilidad del
-        evento. También se incluye en el reporte PDF descargable.
+        evento.
       </p>
 
       {rows.length === 0 ? (
@@ -117,10 +70,10 @@ export default async function InventarioPage({
       )}
 
       <a
-        href={`/api/reports/${eventId}`}
+        href={`/api/reports/${eventId}/inventario`}
         className="mt-4 inline-block rounded-md border border-lime-600 bg-lime-500/10 px-3 py-1.5 text-sm font-medium text-lime-400 transition hover:bg-lime-500/20"
       >
-        Descargar reporte en PDF
+        Descargar inventario en PDF
       </a>
     </div>
   );
