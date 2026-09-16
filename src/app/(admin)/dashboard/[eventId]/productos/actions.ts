@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/action-result";
 
 export async function createProduct(
   eventId: string,
   input: { name: string; priceCents: number; stockQuantity: number | null },
-) {
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase.from("products").insert({
     event_id: eventId,
@@ -15,15 +16,16 @@ export async function createProduct(
     stock_quantity: input.stockQuantity,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/productos`);
+  return { ok: true };
 }
 
 export async function updateProduct(
   productId: string,
   eventId: string,
   input: { name: string; priceCents: number; stockQuantity: number | null },
-) {
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("products")
@@ -34,14 +36,18 @@ export async function updateProduct(
     })
     .eq("id", productId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/productos`);
+  return { ok: true };
 }
 
 // Si el producto ya tiene ventas registradas, borrarlo rompería el historial
 // de reportes (product_sales.product_id lo referencia). En ese caso se
 // desactiva en vez de borrarlo, igual que ticket_types/rrpp.
-export async function deleteProduct(productId: string, eventId: string) {
+export async function deleteProduct(
+  productId: string,
+  eventId: string,
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
 
   const { count } = await supabase
@@ -54,19 +60,25 @@ export async function deleteProduct(productId: string, eventId: string) {
       .from("products")
       .update({ active: false })
       .eq("id", productId);
-    if (error) throw new Error(error.message);
+    if (error) return { error: error.message };
   } else {
     const { error } = await supabase.from("products").delete().eq("id", productId);
-    if (error) throw new Error(error.message);
+    if (error) return { error: error.message };
   }
 
   revalidatePath(`/dashboard/${eventId}/productos`);
+  return { ok: true };
 }
 
-export async function setProductActive(productId: string, eventId: string, active: boolean) {
+export async function setProductActive(
+  productId: string,
+  eventId: string,
+  active: boolean,
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase.from("products").update({ active }).eq("id", productId);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/productos`);
+  return { ok: true };
 }

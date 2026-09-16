@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createEvent } from "../actions";
+import { isActionError } from "@/lib/action-result";
 
 type TicketTypeRow = { name: string; price: string; isStaff: boolean };
 
@@ -47,26 +48,26 @@ export default function NewEventForm() {
     setError(null);
 
     startTransition(async () => {
-      try {
-        const { eventId } = await createEvent({
-          name,
-          slug,
-          venue,
-          starts_at: startsAt ? new Date(startsAt).toISOString() : undefined,
-          whatsapp_number: whatsappNumber,
-          whatsapp_message_template: template,
-          ticket_types: types
-            .filter((t) => t.name.trim())
-            .map((t) => ({
-              name: t.name.trim(),
-              price_cents: Math.round(parseFloat(t.price || "0") * 100),
-              is_staff_type: t.isStaff,
-            })),
-        });
-        router.push(`/dashboard/${eventId}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Error desconocido");
+      const res = await createEvent({
+        name,
+        slug,
+        venue,
+        starts_at: startsAt ? new Date(startsAt).toISOString() : undefined,
+        whatsapp_number: whatsappNumber,
+        whatsapp_message_template: template,
+        ticket_types: types
+          .filter((t) => t.name.trim())
+          .map((t) => ({
+            name: t.name.trim(),
+            price_cents: Math.round(parseFloat(t.price || "0") * 100),
+            is_staff_type: t.isStaff,
+          })),
+      });
+      if (isActionError(res)) {
+        setError(res.error);
+        return;
       }
+      router.push(`/dashboard/${res.eventId}`);
     });
   }
 

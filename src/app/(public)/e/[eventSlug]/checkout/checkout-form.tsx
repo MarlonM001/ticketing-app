@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTicket } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type Step = "detalles" | "confirmar";
 
@@ -37,17 +38,17 @@ export default function CheckoutForm({
   function confirm() {
     setError(null);
     startTransition(async () => {
-      try {
-        const { ticketId } = await createTicket({
-          ticketTypeId,
-          refCode,
-          name,
-          phone,
-        });
-        router.push(`/e/${eventSlug}/confirmacion/${ticketId}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo procesar la entrada");
+      const res = await createTicket({
+        ticketTypeId,
+        refCode,
+        name,
+        phone,
+      });
+      if (isActionError(res)) {
+        setError(res.error);
+        return;
       }
+      router.push(`/e/${eventSlug}/confirmacion/${res.ticketId}`);
     });
   }
 

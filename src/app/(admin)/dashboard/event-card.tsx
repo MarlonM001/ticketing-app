@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { deleteEvent } from "./eventos/actions";
+import { isActionError } from "@/lib/action-result";
 
 type Event = { id: string; name: string; venue: string | null; status: string };
 
@@ -14,10 +15,9 @@ export default function EventCard({ event }: { event: Event }) {
   function handleDelete() {
     setError(null);
     startTransition(async () => {
-      try {
-        await deleteEvent(event.id);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo eliminar el evento");
+      const res = await deleteEvent(event.id);
+      if (isActionError(res)) {
+        setError(res.error);
         setConfirming(false);
       }
     });

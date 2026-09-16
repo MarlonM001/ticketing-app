@@ -34,7 +34,11 @@ export default function AlertsBanner({
           </div>
           <button
             disabled={isPending}
-            onClick={() => startTransition(() => resolveAlert(alert.id, eventId))}
+            onClick={() =>
+              startTransition(() => {
+                void resolveAlert(alert.id, eventId);
+              })
+            }
             className="rounded-md border border-red-400 px-3 py-1 text-red-200 disabled:opacity-50"
           >
             Resolver

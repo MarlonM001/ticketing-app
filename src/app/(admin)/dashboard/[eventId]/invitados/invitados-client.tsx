@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { updateTicket, cancelTicket, reinstateTicket } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type TicketRow = {
   id: string;
@@ -34,6 +35,7 @@ export default function InvitadosClient({
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(
@@ -72,6 +74,7 @@ export default function InvitadosClient({
           <option value="rejected">Cancelado</option>
         </select>
       </div>
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="space-y-2">
         {filtered.length === 0 ? (
@@ -86,7 +89,12 @@ export default function InvitadosClient({
                 onCancel={() => setEditingId(null)}
                 onSave={(input) =>
                   startTransition(async () => {
-                    await updateTicket(t.id, eventId, input);
+                    setError(null);
+                    const res = await updateTicket(t.id, eventId, input);
+                    if (isActionError(res)) {
+                      setError(res.error);
+                      return;
+                    }
                     setEditingId(null);
                   })
                 }
@@ -116,7 +124,11 @@ export default function InvitadosClient({
                   {t.status === "rejected" ? (
                     <button
                       disabled={isPending}
-                      onClick={() => startTransition(() => reinstateTicket(t.id, eventId))}
+                      onClick={() =>
+                        startTransition(() => {
+                          void reinstateTicket(t.id, eventId);
+                        })
+                      }
                       className="rounded-md border border-lime-500 px-3 py-1 text-sm text-lime-400 disabled:opacity-50"
                     >
                       Reactivar
@@ -124,7 +136,11 @@ export default function InvitadosClient({
                   ) : (
                     <button
                       disabled={isPending}
-                      onClick={() => startTransition(() => cancelTicket(t.id, eventId))}
+                      onClick={() =>
+                        startTransition(() => {
+                          void cancelTicket(t.id, eventId);
+                        })
+                      }
                       className="rounded-md border border-red-500 px-3 py-1 text-sm text-red-400 disabled:opacity-50"
                     >
                       Cancelar

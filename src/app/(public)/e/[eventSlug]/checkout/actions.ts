@@ -4,6 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { buildWhatsappUrl } from "@/lib/whatsapp";
+import type { ActionResult } from "@/lib/action-result";
 
 const checkoutSchema = z.object({
   ticketTypeId: z.string().uuid(),
@@ -14,8 +15,14 @@ const checkoutSchema = z.object({
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
-export async function createTicket(input: CheckoutInput) {
-  const parsed = checkoutSchema.parse(input);
+export async function createTicket(
+  input: CheckoutInput,
+): Promise<ActionResult<{ ticketId: string; whatsappUrl: string | null; isFree: boolean }>> {
+  const parsedInput = checkoutSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return { error: "Datos inválidos" };
+  }
+  const parsed = parsedInput.data;
   const admin = createAdminClient();
 
   const { data: ticketType, error: typeError } = await admin
@@ -25,7 +32,7 @@ export async function createTicket(input: CheckoutInput) {
     .single();
 
   if (typeError || !ticketType || !ticketType.active) {
-    throw new Error("Tipo de entrada inválido");
+    return { error: "Tipo de entrada inválido" };
   }
 
   const { data: event, error: eventError } = await admin
@@ -35,7 +42,7 @@ export async function createTicket(input: CheckoutInput) {
     .single();
 
   if (eventError || !event || event.status !== "published") {
-    throw new Error("Evento no disponible");
+    return { error: "Evento no disponible" };
   }
 
   let rrppId: string | null = null;
@@ -59,7 +66,7 @@ export async function createTicket(input: CheckoutInput) {
     .single();
 
   if (guestError || !guest) {
-    throw new Error(guestError?.message ?? "No se pudo registrar el invitado");
+    return { error: guestError?.message ?? "No se pudo registrar el invitado" };
   }
 
   const isFree = ticketType.price_cents === 0;
@@ -80,7 +87,7 @@ export async function createTicket(input: CheckoutInput) {
     .single();
 
   if (ticketError || !ticket) {
-    throw new Error(ticketError?.message ?? "No se pudo generar el ticket");
+    return { error: ticketError?.message ?? "No se pudo generar el ticket" };
   }
 
   let whatsappUrl: string | null = null;

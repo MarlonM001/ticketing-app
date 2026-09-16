@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/action-result";
 
 const ticketTypeSchema = z.object({
   name: z.string().min(1),
@@ -56,14 +57,20 @@ const DEFAULT_BAR_PRODUCTS = [
   "Picada",
 ];
 
-export async function createEvent(input: CreateEventInput) {
-  const parsed = createEventSchema.parse(input);
+export async function createEvent(
+  input: CreateEventInput,
+): Promise<ActionResult<{ eventId: string }>> {
+  const parsedInput = createEventSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return { error: parsedInput.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const parsed = parsedInput.data;
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
+  if (!user) return { error: "No autenticado" };
 
   const { data: event, error: eventError } = await supabase
     .from("events")
@@ -81,7 +88,7 @@ export async function createEvent(input: CreateEventInput) {
     .single();
 
   if (eventError || !event) {
-    throw new Error(eventError?.message ?? "No se pudo crear el evento");
+    return { error: eventError?.message ?? "No se pudo crear el evento" };
   }
 
   const { error: typesError } = await supabase.from("ticket_types").insert(
@@ -95,7 +102,7 @@ export async function createEvent(input: CreateEventInput) {
   );
 
   if (typesError) {
-    throw new Error(typesError.message);
+    return { error: typesError.message };
   }
 
   const { error: productsError } = await supabase.from("products").insert(
@@ -108,7 +115,7 @@ export async function createEvent(input: CreateEventInput) {
   );
 
   if (productsError) {
-    throw new Error(productsError.message);
+    return { error: productsError.message };
   }
 
   return { eventId: event.id as string };
@@ -116,13 +123,13 @@ export async function createEvent(input: CreateEventInput) {
 
 // Borra el evento y todo lo que cuelga de él (entradas, ventas, staff,
 // etc.) por los "on delete cascade" del esquema. Es irreversible.
-export async function deleteEvent(eventId: string) {
+export async function deleteEvent(eventId: string): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("No autenticado");
+  if (!user) return { error: "No autenticado" };
 
   const { error } = await supabase
     .from("events")
@@ -130,6 +137,7 @@ export async function deleteEvent(eventId: string) {
     .eq("id", eventId)
     .eq("created_by", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath("/dashboard");
+  return { ok: true };
 }

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hashPassword } from "@/lib/password";
 import { generateQrDataUrl } from "@/lib/qr";
 import type { StaffRole } from "@/lib/staff-session";
+import type { ActionResult } from "@/lib/action-result";
 
 export async function createStaffCredential(
   eventId: string,
@@ -13,9 +14,9 @@ export async function createStaffCredential(
   password: string,
   whatsappNumber?: string,
   payCents?: number,
-) {
+): Promise<ActionResult<{ id: string }>> {
   if (password.length < 6) {
-    throw new Error("La contraseña debe tener al menos 6 caracteres");
+    return { error: "La contraseña debe tener al menos 6 caracteres" };
   }
 
   const supabase = await createClient();
@@ -35,17 +36,21 @@ export async function createStaffCredential(
     .single();
 
   if (error) {
-    if (error.code === "23505") throw new Error("Ese usuario ya existe para este evento");
-    throw new Error(error.message);
+    if (error.code === "23505") return { error: "Ese usuario ya existe para este evento" };
+    return { error: error.message };
   }
 
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
   return { id: data.id as string };
 }
 
-export async function setStaffPassword(id: string, eventId: string, newPassword: string) {
+export async function setStaffPassword(
+  id: string,
+  eventId: string,
+  newPassword: string,
+): Promise<ActionResult<{ ok: true }>> {
   if (newPassword.length < 6) {
-    throw new Error("La contraseña debe tener al menos 6 caracteres");
+    return { error: "La contraseña debe tener al menos 6 caracteres" };
   }
 
   const supabase = await createClient();
@@ -56,11 +61,16 @@ export async function setStaffPassword(id: string, eventId: string, newPassword:
     .update({ password_hash: passwordHash })
     .eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+  return { ok: true };
 }
 
-export async function setStaffUsername(id: string, eventId: string, newUsername: string) {
+export async function setStaffUsername(
+  id: string,
+  eventId: string,
+  newUsername: string,
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("staff_credentials")
@@ -68,30 +78,40 @@ export async function setStaffUsername(id: string, eventId: string, newUsername:
     .eq("id", id);
 
   if (error) {
-    if (error.code === "23505") throw new Error("Ese usuario ya existe para este evento");
-    throw new Error(error.message);
+    if (error.code === "23505") return { error: "Ese usuario ya existe para este evento" };
+    return { error: error.message };
   }
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+  return { ok: true };
 }
 
-export async function setStaffPay(id: string, eventId: string, payCents: number) {
+export async function setStaffPay(
+  id: string,
+  eventId: string,
+  payCents: number,
+): Promise<ActionResult<{ ok: true }>> {
   if (payCents < 0) {
-    throw new Error("El sueldo no puede ser negativo");
+    return { error: "El sueldo no puede ser negativo" };
   }
 
   const supabase = await createClient();
   const { error } = await supabase.from("staff_credentials").update({ pay_cents: payCents }).eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+  return { ok: true };
 }
 
-export async function grantCreditToAll(eventId: string, message: string, amountCents: number) {
+export async function grantCreditToAll(
+  eventId: string,
+  message: string,
+  amountCents: number,
+): Promise<ActionResult<{ count: number }>> {
   if (!message.trim()) {
-    throw new Error("Escribí un mensaje");
+    return { error: "Escribí un mensaje" };
   }
   if (amountCents <= 0) {
-    throw new Error("El monto debe ser mayor a 0");
+    return { error: "El monto debe ser mayor a 0" };
   }
 
   const supabase = await createClient();
@@ -101,25 +121,34 @@ export async function grantCreditToAll(eventId: string, message: string, amountC
     p_amount_cents: amountCents,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
   return { count: data as number };
 }
 
-export async function toggleStaffActive(id: string, eventId: string, active: boolean) {
+export async function toggleStaffActive(
+  id: string,
+  eventId: string,
+  active: boolean,
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase.from("staff_credentials").update({ active }).eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+  return { ok: true };
 }
 
-export async function deleteStaffCredential(id: string, eventId: string) {
+export async function deleteStaffCredential(
+  id: string,
+  eventId: string,
+): Promise<ActionResult<{ ok: true }>> {
   const supabase = await createClient();
   const { error } = await supabase.from("staff_credentials").delete().eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
   revalidatePath(`/dashboard/${eventId}/staff-accounts`);
+  return { ok: true };
 }
 
 export async function getLoginQr(loginUrl: string) {

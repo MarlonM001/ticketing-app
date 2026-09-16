@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createProduct, updateProduct, deleteProduct, setProductActive } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type ProductRow = {
   id: string;
@@ -21,6 +22,7 @@ export default function ProductosClient({
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -30,12 +32,17 @@ export default function ProductosClient({
         onSubmit={(e) => {
           e.preventDefault();
           if (!name.trim() || !price.trim()) return;
+          setError(null);
           startTransition(async () => {
-            await createProduct(eventId, {
+            const res = await createProduct(eventId, {
               name: name.trim(),
               priceCents: Math.round(parseFloat(price) * 100),
               stockQuantity: stock.trim() ? parseInt(stock, 10) : null,
             });
+            if (isActionError(res)) {
+              setError(res.error);
+              return;
+            }
             setName("");
             setPrice("");
             setStock("");
@@ -74,6 +81,7 @@ export default function ProductosClient({
           Agregar
         </button>
       </form>
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <div className="space-y-2">
         {initialProducts.map((p) =>
@@ -84,7 +92,11 @@ export default function ProductosClient({
               onCancel={() => setEditingId(null)}
               onSave={(input) =>
                 startTransition(async () => {
-                  await updateProduct(p.id, eventId, input);
+                  const res = await updateProduct(p.id, eventId, input);
+                  if (isActionError(res)) {
+                    setError(res.error);
+                    return;
+                  }
                   setEditingId(null);
                 })
               }
@@ -114,7 +126,11 @@ export default function ProductosClient({
                 {p.active ? (
                   <button
                     disabled={isPending}
-                    onClick={() => startTransition(() => deleteProduct(p.id, eventId))}
+                    onClick={() =>
+                      startTransition(() => {
+                        void deleteProduct(p.id, eventId);
+                      })
+                    }
                     className="rounded-md border border-red-500 px-3 py-1 text-sm text-red-400 disabled:opacity-50"
                   >
                     Eliminar
@@ -122,7 +138,11 @@ export default function ProductosClient({
                 ) : (
                   <button
                     disabled={isPending}
-                    onClick={() => startTransition(() => setProductActive(p.id, eventId, true))}
+                    onClick={() =>
+                      startTransition(() => {
+                        void setProductActive(p.id, eventId, true);
+                      })
+                    }
                     className="rounded-md border border-lime-500 px-3 py-1 text-sm text-lime-400 disabled:opacity-50"
                   >
                     Reactivar

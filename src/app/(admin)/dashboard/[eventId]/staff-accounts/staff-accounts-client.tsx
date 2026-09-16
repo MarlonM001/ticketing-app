@@ -14,6 +14,7 @@ import {
 import { buildStaffCredentialsWhatsappUrl } from "@/lib/whatsapp";
 import RoleIcon from "@/components/role-icon";
 import type { StaffRole } from "@/lib/staff-session";
+import { isActionError } from "@/lib/action-result";
 
 type Account = {
   id: string;
@@ -190,17 +191,16 @@ export default function StaffAccountsClient({
     if (!creditMessage.trim() || !amountCents || amountCents <= 0) return;
     setCreditStatus(null);
     startTransition(async () => {
-      try {
-        const { count } = await grantCreditToAll(eventId, creditMessage.trim(), amountCents);
-        setCreditStatus(`Listo — se le dio crédito a ${count} cuenta${count === 1 ? "" : "s"} de staff`);
+      const res = await grantCreditToAll(eventId, creditMessage.trim(), amountCents);
+      if (isActionError(res)) {
+        setCreditStatus(res.error);
+      } else {
+        setCreditStatus(`Listo — se le dio crédito a ${res.count} cuenta${res.count === 1 ? "" : "s"} de staff`);
         setCreditMessage("");
         setCreditAmount("");
         setCreditOpen(false);
-      } catch (err) {
-        setCreditStatus(err instanceof Error ? err.message : "No se pudo dar el crédito");
-      } finally {
-        setTimeout(() => setCreditStatus(null), 4000);
       }
+      setTimeout(() => setCreditStatus(null), 4000);
     });
   }
 
@@ -211,16 +211,16 @@ export default function StaffAccountsClient({
     setCreated(null);
     const payCents = Math.round(Number(pay.replace(",", ".")) * 100) || 0;
     startTransition(async () => {
-      try {
-        await createStaffCredential(eventId, username.trim(), role, password, phone.trim(), payCents);
-        setCreated({ username: username.trim(), role, password, phone: phone.trim() });
-        setUsername("");
-        setPassword("");
-        setPhone("");
-        setPay("");
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo crear la cuenta");
+      const res = await createStaffCredential(eventId, username.trim(), role, password, phone.trim(), payCents);
+      if (isActionError(res)) {
+        setError(res.error);
+        return;
       }
+      setCreated({ username: username.trim(), role, password, phone: phone.trim() });
+      setUsername("");
+      setPassword("");
+      setPhone("");
+      setPay("");
     });
   }
 
@@ -229,13 +229,13 @@ export default function StaffAccountsClient({
     if (Number.isNaN(payCents)) return;
     setRowError(null);
     startTransition(async () => {
-      try {
-        await setStaffPay(account.id, eventId, payCents);
-        setPayId(null);
-        setPayValue("");
-      } catch (err) {
-        setRowError(err instanceof Error ? err.message : "No se pudo cambiar el sueldo");
+      const res = await setStaffPay(account.id, eventId, payCents);
+      if (isActionError(res)) {
+        setRowError(res.error);
+        return;
       }
+      setPayId(null);
+      setPayValue("");
     });
   }
 
@@ -243,20 +243,20 @@ export default function StaffAccountsClient({
     if (!resetPassword) return;
     setRowError(null);
     startTransition(async () => {
-      try {
-        await setStaffPassword(account.id, eventId, resetPassword);
-        setResetResult({
-          id: account.id,
-          username: account.username,
-          role: account.role,
-          password: resetPassword,
-          phone: account.whatsapp_number ?? "",
-        });
-        setResetId(null);
-        setResetPassword("");
-      } catch (err) {
-        setRowError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña");
+      const res = await setStaffPassword(account.id, eventId, resetPassword);
+      if (isActionError(res)) {
+        setRowError(res.error);
+        return;
       }
+      setResetResult({
+        id: account.id,
+        username: account.username,
+        role: account.role,
+        password: resetPassword,
+        phone: account.whatsapp_number ?? "",
+      });
+      setResetId(null);
+      setResetPassword("");
     });
   }
 
@@ -264,11 +264,8 @@ export default function StaffAccountsClient({
     if (!confirm(`¿Eliminar la cuenta "${account.username}"? Esta acción no se puede deshacer.`)) return;
     setRowError(null);
     startTransition(async () => {
-      try {
-        await deleteStaffCredential(account.id, eventId);
-      } catch (err) {
-        setRowError(err instanceof Error ? err.message : "No se pudo eliminar la cuenta");
-      }
+      const res = await deleteStaffCredential(account.id, eventId);
+      if (isActionError(res)) setRowError(res.error);
     });
   }
 
@@ -276,13 +273,13 @@ export default function StaffAccountsClient({
     if (!renameValue.trim()) return;
     setRowError(null);
     startTransition(async () => {
-      try {
-        await setStaffUsername(account.id, eventId, renameValue.trim());
-        setRenameId(null);
-        setRenameValue("");
-      } catch (err) {
-        setRowError(err instanceof Error ? err.message : "No se pudo cambiar el usuario");
+      const res = await setStaffUsername(account.id, eventId, renameValue.trim());
+      if (isActionError(res)) {
+        setRowError(res.error);
+        return;
       }
+      setRenameId(null);
+      setRenameValue("");
     });
   }
 
@@ -460,7 +457,11 @@ export default function StaffAccountsClient({
                   Cambiar sueldo
                 </button>
                 <button
-                  onClick={() => startTransition(() => toggleStaffActive(account.id, eventId, !account.active))}
+                  onClick={() =>
+                    startTransition(() => {
+                      void toggleStaffActive(account.id, eventId, !account.active);
+                    })
+                  }
                   className="rounded-md border border-neutral-700 px-3 py-1 text-sm"
                 >
                   {account.active ? "Desactivar" : "Activar"}

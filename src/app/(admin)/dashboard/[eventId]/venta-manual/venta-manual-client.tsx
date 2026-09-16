@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createManualSale } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type TicketType = { id: string; name: string; price_cents: number };
 
@@ -32,12 +33,12 @@ export default function VentaManualClient({
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      try {
-        const { ticketId } = await createManualSale(eventId, formData);
-        router.push(`/dashboard/${eventId}/venta-manual/${ticketId}`);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo registrar la venta");
+      const res = await createManualSale(eventId, formData);
+      if (isActionError(res)) {
+        setError(res.error);
+        return;
       }
+      router.push(`/dashboard/${eventId}/venta-manual/${res.ticketId}`);
     });
   }
 

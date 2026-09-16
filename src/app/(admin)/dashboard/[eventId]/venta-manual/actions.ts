@@ -4,6 +4,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ActionResult } from "@/lib/action-result";
 
 const manualSaleSchema = z.object({
   ticketTypeId: z.string().uuid(),
@@ -13,21 +14,28 @@ const manualSaleSchema = z.object({
 
 const MAX_PROOF_BYTES = 8 * 1024 * 1024;
 
-export async function createManualSale(eventId: string, formData: FormData) {
+export async function createManualSale(
+  eventId: string,
+  formData: FormData,
+): Promise<ActionResult<{ ticketId: string }>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Sesión inválida, volvé a iniciar sesión.");
+    return { error: "Sesión inválida, volvé a iniciar sesión." };
   }
 
-  const parsed = manualSaleSchema.parse({
+  const parsedInput = manualSaleSchema.safeParse({
     ticketTypeId: formData.get("ticketTypeId"),
     name: formData.get("name"),
     phone: formData.get("phone"),
   });
+  if (!parsedInput.success) {
+    return { error: "Datos inválidos" };
+  }
+  const parsed = parsedInput.data;
 
   const admin = createAdminClient();
 
@@ -41,21 +49,21 @@ export async function createManualSale(eventId: string, formData: FormData) {
   const event = ticketType?.events as unknown as { created_by: string } | undefined;
 
   if (typeError || !ticketType || !ticketType.active || event?.created_by !== user.id) {
-    throw new Error("Tipo de entrada inválido");
+    return { error: "Tipo de entrada inválido" };
   }
 
   let paymentProofPath: string | null = null;
   const proof = formData.get("proof");
   if (proof instanceof File && proof.size > 0) {
     if (proof.size > MAX_PROOF_BYTES) {
-      throw new Error("La foto es demasiado grande (máx. 8MB)");
+      return { error: "La foto es demasiado grande (máx. 8MB)" };
     }
     const path = `${eventId}/${nanoid()}-${proof.name}`;
     const { error: uploadError } = await admin.storage
       .from("payment-proofs")
       .upload(path, proof, { contentType: proof.type });
 
-    if (uploadError) throw new Error(uploadError.message);
+    if (uploadError) return { error: uploadError.message };
     paymentProofPath = path;
   }
 
@@ -69,7 +77,7 @@ export async function createManualSale(eventId: string, formData: FormData) {
     .single();
 
   if (guestError || !guest) {
-    throw new Error(guestError?.message ?? "No se pudo registrar el invitado");
+    return { error: guestError?.message ?? "No se pudo registrar el invitado" };
   }
 
   const qrCode = nanoid(21);
@@ -89,7 +97,7 @@ export async function createManualSale(eventId: string, formData: FormData) {
     .single();
 
   if (ticketError || !ticket) {
-    throw new Error(ticketError?.message ?? "No se pudo generar el ticket");
+    return { error: ticketError?.message ?? "No se pudo generar el ticket" };
   }
 
   return { ticketId: ticket.id as string };

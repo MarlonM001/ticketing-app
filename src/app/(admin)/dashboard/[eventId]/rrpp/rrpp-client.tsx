@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { createRrpp, toggleRrppActive } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type RrppRow = {
   id: string;
@@ -26,6 +27,7 @@ export default function RrppClient({
 }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -37,8 +39,13 @@ export default function RrppClient({
         onSubmit={(e) => {
           e.preventDefault();
           if (!name.trim() || !code.trim()) return;
+          setError(null);
           startTransition(async () => {
-            await createRrpp(eventId, name.trim(), code.trim().toUpperCase());
+            const res = await createRrpp(eventId, name.trim(), code.trim().toUpperCase());
+            if (isActionError(res)) {
+              setError(res.error);
+              return;
+            }
             setName("");
             setCode("");
           });
@@ -65,6 +72,7 @@ export default function RrppClient({
           Agregar
         </button>
       </form>
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       <table className="w-full text-left text-sm">
         <thead>
@@ -104,7 +112,11 @@ export default function RrppClient({
                     {copiedId === r.id ? "Copiado" : "Copiar link"}
                   </button>
                   <button
-                    onClick={() => startTransition(() => toggleRrppActive(r.id, eventId, !r.active))}
+                    onClick={() =>
+                      startTransition(() => {
+                        void toggleRrppActive(r.id, eventId, !r.active);
+                      })
+                    }
                     className="ml-2 rounded-md border border-neutral-700 px-2 py-1 text-xs"
                   >
                     {r.active ? "Desactivar" : "Activar"}
