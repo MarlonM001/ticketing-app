@@ -127,7 +127,8 @@ export default async function EventDashboardPage({
         <StatCard
           label="Asistencia"
           value={`${checkedIn} / ${totalTickets}`}
-          description="Invitados actualmente adentro del evento (entraron y todavía no escanearon su salida), sobre el total de entradas vendidas."
+          description="Invitados actualmente adentro del evento (entraron y todavía no escanearon su salida), sobre el total de entradas vendidas. Tocá para ver el detalle."
+          href={`/dashboard/${eventId}/asistencia`}
         />
         <StatCard
           label="Staff"
