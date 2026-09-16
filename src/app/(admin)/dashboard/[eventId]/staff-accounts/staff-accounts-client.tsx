@@ -39,6 +39,7 @@ const ROLE_LABEL: Record<StaffRole, string> = {
   caja: "Caja",
   mesero: "Mesero",
   dj: "DJ",
+  vendedor: "Vendedor",
 };
 
 function randomPassword() {

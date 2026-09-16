@@ -9,7 +9,7 @@ function getSecretKey() {
   return new TextEncoder().encode(secret);
 }
 
-export type StaffRole = "puerta" | "caja" | "mesero" | "dj";
+export type StaffRole = "puerta" | "caja" | "mesero" | "dj" | "vendedor";
 
 export type StaffSessionPayload = {
   eventId: string;
@@ -18,7 +18,7 @@ export type StaffSessionPayload = {
   staffId: string;
 };
 
-const STAFF_ROLES: StaffRole[] = ["puerta", "caja", "mesero", "dj"];
+const STAFF_ROLES: StaffRole[] = ["puerta", "caja", "mesero", "dj", "vendedor"];
 
 export async function signStaffSession(payload: StaffSessionPayload) {
   return new SignJWT(payload)

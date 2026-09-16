@@ -18,7 +18,6 @@ export default async function EventDashboardPage({
     { data: stats },
     { data: breakdown },
     { data: staffStats },
-    { data: pendingCount },
     { data: alerts },
     { data: productSales },
     { data: attendance },
@@ -31,7 +30,6 @@ export default async function EventDashboardPage({
       .eq("event_id", eventId)
       .order("sort_order"),
     supabase.from("staff_checkin_stats").select("*").eq("event_id", eventId).maybeSingle(),
-    supabase.from("pending_tickets").select("ticket_id").eq("event_id", eventId),
     supabase
       .from("staff_alerts")
       .select("id, label, reason, created_at")
@@ -51,12 +49,17 @@ export default async function EventDashboardPage({
   const revenue = stats?.total_revenue_cents ?? 0;
   const staffTotal = staffStats?.staff_total ?? 0;
   const staffCheckedIn = staffStats?.staff_checked_in ?? 0;
-  const pendingN = pendingCount?.length ?? 0;
 
   const totalQty = (breakdown ?? []).reduce((acc, b) => acc + b.qty, 0);
   const barRevenue = (productSales ?? []).reduce((acc, p) => acc + p.revenue_cents, 0);
 
-  const ROLE_LABEL: Record<string, string> = { puerta: "Puerta", caja: "Caja", mesero: "Mesero", dj: "DJ" };
+  const ROLE_LABEL: Record<string, string> = {
+    puerta: "Puerta",
+    caja: "Caja",
+    mesero: "Mesero",
+    dj: "DJ",
+    vendedor: "Vendedor",
+  };
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -67,12 +70,6 @@ export default async function EventDashboardPage({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold">{event?.name}</h1>
         <div className="flex flex-wrap gap-2 text-sm">
-          <Link
-            href={`/dashboard/${eventId}/pendientes`}
-            className="rounded-md border border-amber-700/60 bg-amber-950/30 px-3 py-1.5 text-amber-400 transition hover:border-amber-500"
-          >
-            Pendientes {pendingN > 0 && `(${pendingN})`}
-          </Link>
           <Link
             href={`/dashboard/${eventId}/escaneo`}
             className="rounded-md border border-lime-700/60 bg-lime-950/30 px-3 py-1.5 text-lime-400 transition hover:border-lime-500"
@@ -90,12 +87,6 @@ export default async function EventDashboardPage({
             className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
           >
             Invitados
-          </Link>
-          <Link
-            href={`/dashboard/${eventId}/rrpp`}
-            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
-          >
-            RRPP
           </Link>
           <Link
             href={`/dashboard/${eventId}/productos`}
@@ -136,12 +127,6 @@ export default async function EventDashboardPage({
           value={`${staffCheckedIn} / ${staffTotal}`}
           description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ. Tocá para ver el detalle."
           href={`/dashboard/${eventId}/asistencia/staff`}
-        />
-        <StatCard
-          label="Pendientes"
-          value={String(pendingN)}
-          description="Entradas ya generadas que todavía esperan que el organizador confirme el pago. Tocá para revisarlas."
-          href={`/dashboard/${eventId}/pendientes`}
         />
         <StatCard
           label="Consumo barra"

@@ -72,6 +72,8 @@ export async function createTicket(
   const isFree = ticketType.price_cents === 0;
   const qrCode = nanoid(21);
 
+  // Las entradas se generan manualmente (venta manual o vendedores), no hay
+  // un paso de aprobación intermedio: quedan habilitadas al instante.
   const { data: ticket, error: ticketError } = await admin
     .from("tickets")
     .insert({
@@ -81,7 +83,7 @@ export async function createTicket(
       guest_id: guest.id,
       rrpp_id: rrppId,
       price_cents: ticketType.price_cents,
-      status: isFree ? "approved" : "pending",
+      status: "approved",
     })
     .select("id")
     .single();

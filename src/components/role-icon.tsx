@@ -54,6 +54,13 @@ export default function RoleIcon({
           <rect x="17.5" y="13" width="4" height="6" rx="1.3" />
         </svg>
       );
+    case "vendedor":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M3 12 12 3l8 1 1 8-9 9z" />
+          <circle cx="15" cy="8" r="1.3" fill="currentColor" stroke="none" />
+        </svg>
+      );
     default:
       return null;
   }

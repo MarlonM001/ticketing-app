@@ -9,7 +9,7 @@ export default async function AccesoPage({
   const { eventId } = await params;
 
   return (
-    <AuthShell title="Acceso de staff" subtitle="Caja · Puerta · Mesero · DJ">
+    <AuthShell title="Acceso de staff" subtitle="Caja · Puerta · Mesero · DJ · Vendedor">
       <ActivateClient eventId={eventId} />
     </AuthShell>
   );

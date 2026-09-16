@@ -7,12 +7,13 @@ import RoleIcon from "@/components/role-icon";
 import type { StaffRole } from "@/lib/staff-session";
 import { isActionError } from "@/lib/action-result";
 
-const ROLES: StaffRole[] = ["puerta", "caja", "mesero", "dj"];
+const ROLES: StaffRole[] = ["puerta", "caja", "mesero", "dj", "vendedor"];
 const ROLE_LABEL: Record<StaffRole, string> = {
   puerta: "Puerta",
   caja: "Caja",
   mesero: "Mesero",
   dj: "DJ",
+  vendedor: "Vendedor",
 };
 
 export default function ActivateClient({ eventId }: { eventId: string }) {
@@ -37,6 +38,8 @@ export default function ActivateClient({ eventId }: { eventId: string }) {
       router.replace(`/scan/${eventId}`);
     } else if (res.role === "caja") {
       router.replace(`/caja/${eventId}`);
+    } else if (res.role === "vendedor") {
+      router.replace(`/scan/${eventId}/vendedor`);
     } else {
       router.replace(`/scan/${eventId}/asistencia`);
     }
