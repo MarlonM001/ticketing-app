@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ProductosClient from "./productos-client";
 
@@ -18,7 +19,15 @@ export default async function ProductosPage({
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-semibold">Productos de barra</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Productos de barra</h1>
+        <Link
+          href={`/dashboard/${eventId}/productos/inventario`}
+          className="text-sm text-lime-400"
+        >
+          Ver inventario →
+        </Link>
+      </div>
       <ProductosClient eventId={eventId} initialProducts={products ?? []} />
     </div>
   );
