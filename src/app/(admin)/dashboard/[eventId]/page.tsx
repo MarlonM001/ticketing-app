@@ -74,6 +74,12 @@ export default async function EventDashboardPage({
             Pendientes {pendingN > 0 && `(${pendingN})`}
           </Link>
           <Link
+            href={`/dashboard/${eventId}/escaneo`}
+            className="rounded-md border border-lime-700/60 bg-lime-950/30 px-3 py-1.5 text-lime-400 transition hover:border-lime-500"
+          >
+            Escanear QR
+          </Link>
+          <Link
             href={`/dashboard/${eventId}/venta-manual`}
             className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
           >
@@ -121,12 +127,12 @@ export default async function EventDashboardPage({
         <StatCard
           label="Asistencia"
           value={`${checkedIn} / ${totalTickets}`}
-          description="Invitados que ya escanearon su entrada en la puerta, sobre el total de entradas vendidas."
+          description="Invitados actualmente adentro del evento (entraron y todavía no escanearon su salida), sobre el total de entradas vendidas."
         />
         <StatCard
           label="Staff"
           value={`${staffCheckedIn} / ${staffTotal}`}
-          description="Entradas de cortesía para staff (tipo marcado como 'staff') que ya ingresaron, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ."
+          description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ."
         />
         <StatCard
           label="Pendientes"

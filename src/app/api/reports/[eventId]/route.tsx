@@ -37,6 +37,7 @@ export async function GET(
       .from("scans")
       .select("scanned_at, tickets(guests(name), ticket_types(name))")
       .eq("event_id", eventId)
+      .eq("direction", "in")
       .order("scanned_at"),
     supabase
       .from("product_sales")

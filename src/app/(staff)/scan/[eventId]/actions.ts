@@ -9,6 +9,9 @@ import {
   STAFF_COOKIE_NAME,
   type StaffRole,
 } from "@/lib/staff-session";
+import type { ScanResult } from "@/components/qr-scanner";
+
+export type { ScanResult } from "@/components/qr-scanner";
 
 export async function loginStaff(
   eventId: string,
@@ -55,13 +58,6 @@ export async function loginStaff(
 
   return { role: cred.role as StaffRole };
 }
-
-export type ScanResult = {
-  result: "ok" | "already_used" | "pending" | "invalid";
-  guest_name: string | null;
-  ticket_type_name: string | null;
-  scanned_at: string | null;
-};
 
 export async function scanTicket(qrCode: string): Promise<ScanResult> {
   const cookieStore = await cookies();
