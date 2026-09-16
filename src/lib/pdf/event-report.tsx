@@ -14,6 +14,8 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#eee", paddingVertical: 4 },
   tableHeaderRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#000", paddingBottom: 4, fontFamily: "Helvetica-Bold" },
   col: { flex: 1 },
+  colWide: { flex: 1.6 },
+  colNarrow: { flex: 0.8 },
 });
 
 const ars = (cents: number) => `$${(cents / 100).toLocaleString("es-AR")}`;
@@ -32,7 +34,14 @@ export type EventReportData = {
   breakdown: { name: string; qty: number; revenueCents: number }[];
   rrpp: { name: string; totalTickets: number; usedTickets: number; revenueCents: number }[];
   attendees: { name: string; ticketType: string; scannedAt: string }[];
-  products: { name: string; qty: number; courtesyQty: number; revenueCents: number }[];
+  products: {
+    name: string;
+    qty: number;
+    courtesyQty: number;
+    revenueCents: number;
+    initialStock: number | null;
+    finalStock: number | null;
+  }[];
   staffAttendance: { role: string; total: number; checkedIn: number }[];
   staffSettlement: {
     username: string;
@@ -49,6 +58,7 @@ const ROLE_LABEL: Record<string, string> = {
   caja: "Caja",
   mesero: "Mesero",
   dj: "DJ",
+  vendedor: "Vendedor",
 };
 
 export function EventReportDocument({ data }: { data: EventReportData }) {
@@ -129,15 +139,19 @@ export function EventReportDocument({ data }: { data: EventReportData }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Consumo en barra</Text>
             <View style={styles.tableHeaderRow}>
-              <Text style={styles.col}>Producto</Text>
-              <Text style={styles.col}>Cantidad</Text>
-              <Text style={styles.col}>Cortesías (libre)</Text>
+              <Text style={styles.colWide}>Producto</Text>
+              <Text style={styles.colNarrow}>Inicial</Text>
+              <Text style={styles.colNarrow}>Final</Text>
+              <Text style={styles.colNarrow}>Vendido</Text>
+              <Text style={styles.col}>Cortesías</Text>
               <Text style={styles.col}>Recaudación</Text>
             </View>
             {data.products.map((p, i) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.col}>{p.name}</Text>
-                <Text style={styles.col}>{p.qty}</Text>
+                <Text style={styles.colWide}>{p.name}</Text>
+                <Text style={styles.colNarrow}>{p.initialStock ?? "—"}</Text>
+                <Text style={styles.colNarrow}>{p.finalStock ?? "—"}</Text>
+                <Text style={styles.colNarrow}>{p.qty}</Text>
                 <Text style={styles.col}>{p.courtesyQty > 0 ? p.courtesyQty : "—"}</Text>
                 <Text style={styles.col}>{ars(p.revenueCents)}</Text>
               </View>

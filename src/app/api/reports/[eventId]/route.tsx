@@ -41,7 +41,7 @@ export async function GET(
       .order("scanned_at"),
     supabase
       .from("product_sales")
-      .select("quantity, unit_price_cents, is_courtesy, products(name)")
+      .select("quantity, unit_price_cents, is_courtesy, products(name, stock_quantity)")
       .eq("event_id", eventId),
     supabase.from("staff_attendance_stats").select("*").eq("event_id", eventId),
     supabase
@@ -56,10 +56,19 @@ export async function GET(
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
-  const productTotals = new Map<string, { qty: number; courtesyQty: number; revenueCents: number }>();
+  // El stock actual del producto ya es el "final" (se descuenta en cada
+  // venta); el "inicial" se reconstruye sumándole lo vendido, sin
+  // necesidad de guardar un snapshot aparte.
+  const productTotals = new Map<
+    string,
+    { qty: number; courtesyQty: number; revenueCents: number; finalStock: number | null }
+  >();
   for (const row of productSales ?? []) {
-    const productName = (row.products as unknown as { name: string } | null)?.name ?? "—";
-    const entry = productTotals.get(productName) ?? { qty: 0, courtesyQty: 0, revenueCents: 0 };
+    const product = row.products as unknown as { name: string; stock_quantity: number | null } | null;
+    const productName = product?.name ?? "—";
+    const entry =
+      productTotals.get(productName) ??
+      { qty: 0, courtesyQty: 0, revenueCents: 0, finalStock: product?.stock_quantity ?? null };
     entry.qty += row.quantity;
     if (row.is_courtesy) {
       entry.courtesyQty += row.quantity;
@@ -109,6 +118,8 @@ export async function GET(
       qty: p.qty,
       courtesyQty: p.courtesyQty,
       revenueCents: p.revenueCents,
+      initialStock: p.finalStock === null ? null : p.finalStock + p.qty,
+      finalStock: p.finalStock,
     })),
     staffAttendance: (attendance ?? []).map((a) => ({
       role: a.role,
