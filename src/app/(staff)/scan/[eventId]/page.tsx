@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyStaffSession, STAFF_COOKIE_NAME } from "@/lib/staff-session";
-import StaffRealtimeRefresher from "../../realtime-refresher";
 import Scanner from "./scanner";
 
 export default async function ScanPage({
@@ -35,13 +34,10 @@ export default async function ScanPage({
   ]);
 
   return (
-    <>
-      <StaffRealtimeRefresher eventId={eventId} />
-      <Scanner
-        products={products ?? []}
-        creditCents={self?.credit_cents ?? 0}
-        creditMessage={self?.credit_message ?? null}
-      />
-    </>
+    <Scanner
+      products={products ?? []}
+      creditCents={self?.credit_cents ?? 0}
+      creditMessage={self?.credit_message ?? null}
+    />
   );
 }
