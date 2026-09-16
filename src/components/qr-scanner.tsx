@@ -76,7 +76,11 @@ export default function QrScanner({
           } catch {
             // no-op
           }
-          setScanning(false);
+          // Importante: NO tocar `scanning` acá. Cambiarlo desmonta el div
+          // #qr-reader en el mismo instante en que la librería puede seguir
+          // limpiando referencias internas sobre ese nodo, lo que tiraba una
+          // excepción real y activaba la pantalla de error. `result`/`error`
+          // ya tienen prioridad en el render, así que alcanza con setearlos.
           lastQrCodeRef.current = decodedText;
           try {
             const res = await onScanRef.current(decodedText);
@@ -109,7 +113,12 @@ export default function QrScanner({
 
     return () => {
       cancelled = true;
-      html5QrCodeRef.current?.stop().catch(() => {});
+      try {
+        html5QrCodeRef.current?.stop().catch(() => {});
+      } catch {
+        // no-op: algunas versiones de la librería pueden tirar sincrónico
+        // si el nodo del DOM ya no está, no debe tumbar la pantalla.
+      }
     };
   }, [scanning]);
 
@@ -135,6 +144,7 @@ export default function QrScanner({
     setError(null);
     setResult(null);
     setCameraError(null);
+    setScanning(false);
   }
 
   if (error) {

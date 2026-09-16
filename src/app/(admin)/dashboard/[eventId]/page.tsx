@@ -135,7 +135,7 @@ export default async function EventDashboardPage({
           label="Staff"
           value={`${staffCheckedIn} / ${staffTotal}`}
           description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ. Tocá para ver el detalle."
-          href={`/dashboard/${eventId}/asistencia?tipo=staff`}
+          href={`/dashboard/${eventId}/asistencia/staff`}
         />
         <StatCard
           label="Pendientes"
