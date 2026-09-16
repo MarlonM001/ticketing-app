@@ -60,7 +60,10 @@ export async function loginStaff(
   return { role: cred.role as StaffRole };
 }
 
-export async function scanTicket(qrCode: string): Promise<ActionResult<ScanResult>> {
+export async function scanTicket(
+  qrCode: string,
+  force = false,
+): Promise<ActionResult<ScanResult>> {
   const cookieStore = await cookies();
   const token = cookieStore.get(STAFF_COOKIE_NAME)?.value;
   const session = token ? await verifyStaffSession(token) : null;
@@ -71,7 +74,7 @@ export async function scanTicket(qrCode: string): Promise<ActionResult<ScanResul
 
   const admin = createAdminClient();
   const { data, error } = await admin
-    .rpc("scan_ticket", { p_qr_code: qrCode, p_scanned_by: session.label })
+    .rpc("scan_ticket", { p_qr_code: qrCode, p_scanned_by: session.label, p_force: force })
     .single();
 
   if (error || !data) {

@@ -7,7 +7,7 @@ import QrScanner from "@/components/qr-scanner";
 
 export default function ScannerAdmin({ eventId }: { eventId: string }) {
   const onScan = useCallback(
-    (qrCode: string) => scanTicketAsAdmin(eventId, qrCode),
+    (qrCode: string, force?: boolean) => scanTicketAsAdmin(eventId, qrCode, force),
     [eventId],
   );
 

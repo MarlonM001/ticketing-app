@@ -11,6 +11,7 @@ const STATE_STYLES: Record<ScanResult["result"], { label: string; className: str
   ok_out: { label: "OK — SALE", className: "bg-sky-600 border-sky-400" },
   pending: { label: "PENDIENTE DE APROBACIÓN", className: "bg-amber-600 border-amber-400" },
   invalid: { label: "QR INVÁLIDO", className: "bg-neutral-700 border-neutral-500" },
+  reentry_expired: { label: "SALIÓ HACE MÁS DE 5 HORAS", className: "bg-orange-600 border-orange-400" },
 };
 
 // Tamaño de la caja de escaneo en función del viewfinder real (no un valor
@@ -26,16 +27,18 @@ export default function QrScanner({
   header,
   floatingButtons,
 }: {
-  onScan: (qrCode: string) => Promise<ActionResult<ScanResult>>;
+  onScan: (qrCode: string, force?: boolean) => Promise<ActionResult<ScanResult>>;
   header?: React.ReactNode;
   floatingButtons?: React.ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const html5QrCodeRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const onScanRef = useRef(onScan);
+  const lastQrCodeRef = useRef<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [forcing, setForcing] = useState(false);
   const busyRef = useRef(false);
 
   useEffect(() => {
@@ -68,6 +71,7 @@ export default function QrScanner({
           } catch {
             // no-op
           }
+          lastQrCodeRef.current = decodedText;
           try {
             const res = await onScanRef.current(decodedText);
             if (isActionError(res)) {
@@ -102,6 +106,24 @@ export default function QrScanner({
     };
   }, [result]);
 
+  async function forceReentry() {
+    const qrCode = lastQrCodeRef.current;
+    if (!qrCode || forcing) return;
+    setForcing(true);
+    try {
+      const res = await onScanRef.current(qrCode, true);
+      if (isActionError(res)) {
+        setError(res.error);
+      } else {
+        setResult(res);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al escanear");
+    } finally {
+      setForcing(false);
+    }
+  }
+
   if (error) {
     return (
       <div className="p-6 text-center text-red-400">
@@ -122,6 +144,7 @@ export default function QrScanner({
 
   if (result) {
     const style = STATE_STYLES[result.result];
+    const isReentryExpired = result.result === "reentry_expired";
     return (
       <div className={`flex min-h-screen flex-col items-center justify-center gap-4 border-8 p-6 text-center text-white ${style.className}`}>
         <p className="text-3xl font-black">{style.label}</p>
@@ -129,16 +152,35 @@ export default function QrScanner({
         {result.ticket_type_name && <p className="text-neutral-200">{result.ticket_type_name}</p>}
         {result.scanned_at && (
           <p className="text-sm text-neutral-200">
-            {result.result === "ok_out" ? "Salió a las " : "Ingresó a las "}
+            {result.result === "ok_in" ? "Ingresó a las " : "Salió a las "}
             {new Date(result.scanned_at).toLocaleTimeString("es-AR")}
           </p>
         )}
-        <button
-          onClick={() => setResult(null)}
-          className="mt-4 rounded-md bg-white px-6 py-3 font-medium text-neutral-950"
-        >
-          Escanear siguiente
-        </button>
+        {isReentryExpired ? (
+          <div className="mt-4 flex w-full max-w-xs flex-col gap-2">
+            <button
+              onClick={forceReentry}
+              disabled={forcing}
+              className="rounded-md bg-white px-6 py-3 font-medium text-neutral-950 disabled:opacity-50"
+            >
+              {forcing ? "Ingresando..." : "Ingresar de todas formas"}
+            </button>
+            <button
+              onClick={() => setResult(null)}
+              disabled={forcing}
+              className="rounded-md border border-white/60 px-6 py-3 font-medium text-white disabled:opacity-50"
+            >
+              No dejar pasar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setResult(null)}
+            className="mt-4 rounded-md bg-white px-6 py-3 font-medium text-neutral-950"
+          >
+            Escanear siguiente
+          </button>
+        )}
         {floatingButtons}
       </div>
     );

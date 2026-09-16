@@ -8,6 +8,7 @@ import type { ActionResult } from "@/lib/action-result";
 export async function scanTicketAsAdmin(
   eventId: string,
   qrCode: string,
+  force = false,
 ): Promise<ActionResult<ScanResult>> {
   const supabase = await createClient();
   const {
@@ -30,7 +31,7 @@ export async function scanTicketAsAdmin(
 
   const admin = createAdminClient();
   const { data, error } = await admin
-    .rpc("scan_ticket", { p_qr_code: qrCode, p_scanned_by: user.email ?? "Admin" })
+    .rpc("scan_ticket", { p_qr_code: qrCode, p_scanned_by: user.email ?? "Admin", p_force: force })
     .single();
 
   if (error || !data) {
