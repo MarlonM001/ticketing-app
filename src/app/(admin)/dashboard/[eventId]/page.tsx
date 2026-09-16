@@ -17,7 +17,6 @@ export default async function EventDashboardPage({
     { data: event },
     { data: stats },
     { data: breakdown },
-    { data: staffStats },
     { data: alerts },
     { data: productSales },
     { data: attendance },
@@ -29,7 +28,6 @@ export default async function EventDashboardPage({
       .select("*")
       .eq("event_id", eventId)
       .order("sort_order"),
-    supabase.from("staff_checkin_stats").select("*").eq("event_id", eventId).maybeSingle(),
     supabase
       .from("staff_alerts")
       .select("id, label, reason, created_at")
@@ -47,8 +45,6 @@ export default async function EventDashboardPage({
   const totalTickets = stats?.total_tickets ?? 0;
   const checkedIn = stats?.checked_in_count ?? 0;
   const revenue = stats?.total_revenue_cents ?? 0;
-  const staffTotal = staffStats?.staff_total ?? 0;
-  const staffCheckedIn = staffStats?.staff_checked_in ?? 0;
 
   const totalQty = (breakdown ?? []).reduce((acc, b) => acc + b.qty, 0);
   const barRevenue = (productSales ?? []).reduce((acc, p) => acc + p.revenue_cents, 0);
@@ -95,6 +91,12 @@ export default async function EventDashboardPage({
             Productos
           </Link>
           <Link
+            href={`/dashboard/${eventId}/vender`}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
+          >
+            Vender
+          </Link>
+          <Link
             href={`/dashboard/${eventId}/staff-accounts`}
             className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-neutral-200 transition hover:border-lime-500 hover:text-lime-400"
           >
@@ -121,12 +123,6 @@ export default async function EventDashboardPage({
           value={`${checkedIn} / ${totalTickets}`}
           description="Invitados actualmente adentro del evento (entraron y todavía no escanearon su salida), sobre el total de entradas vendidas. Tocá para ver el detalle."
           href={`/dashboard/${eventId}/asistencia`}
-        />
-        <StatCard
-          label="Staff"
-          value={`${staffCheckedIn} / ${staffTotal}`}
-          description="Entradas de cortesía para staff (tipo marcado como 'staff') que están actualmente adentro, sobre el total emitidas. No tiene que ver con las cuentas de Caja/Puerta/Mesero/DJ. Tocá para ver el detalle."
-          href={`/dashboard/${eventId}/asistencia/staff`}
         />
         <StatCard
           label="Consumo barra"
