@@ -48,6 +48,8 @@ export default async function EventDashboardPage({
 
   const totalQty = (breakdown ?? []).reduce((acc, b) => acc + b.qty, 0);
   const barRevenue = (productSales ?? []).reduce((acc, p) => acc + p.revenue_cents, 0);
+  const staffTotal = (attendance ?? []).reduce((acc, a) => acc + a.total, 0);
+  const staffWorking = (attendance ?? []).reduce((acc, a) => acc + a.checked_in, 0);
 
   const ROLE_LABEL: Record<string, string> = {
     puerta: "Puerta",
@@ -130,6 +132,12 @@ export default async function EventDashboardPage({
           description="Total recaudado por venta de productos (bebidas, comida, etc.) registrada desde Caja. Tocá para ver el detalle por producto."
           href="#consumo-barra"
         />
+        <StatCard
+          label="Staff"
+          value={`${staffWorking} / ${staffTotal}`}
+          description="Cuentas de staff (Puerta/Caja/Mesero/DJ/Vendedor) que ya se loguearon al menos una vez, sobre el total de cuentas activas — para ver de un vistazo si ya están trabajando. Tocá para ver el detalle por rol."
+          href="#asistencia-equipo"
+        />
       </div>
 
       <div id="distribucion" className="scroll-mt-4 rounded-xl border border-neutral-800 bg-neutral-900 p-4">
@@ -192,7 +200,7 @@ export default async function EventDashboardPage({
         )}
       </div>
 
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+      <div id="asistencia-equipo" className="scroll-mt-4 rounded-xl border border-neutral-800 bg-neutral-900 p-4">
         <h2 className="mb-3 text-sm font-medium uppercase text-neutral-400">
           Asistencia del equipo
         </h2>
