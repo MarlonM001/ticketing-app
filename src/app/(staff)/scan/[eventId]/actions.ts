@@ -9,18 +9,19 @@ import {
   STAFF_COOKIE_NAME,
   type StaffRole,
 } from "@/lib/staff-session";
-import type { ScanResult } from "@/components/qr-scanner";
+import type { ScanResult } from "@/lib/scan-result";
+import type { ActionResult } from "@/lib/action-result";
 
-export type { ScanResult } from "@/components/qr-scanner";
+export type { ScanResult } from "@/lib/scan-result";
 
 export async function loginStaff(
   eventId: string,
   username: string,
   password: string,
   displayName: string,
-) {
+): Promise<ActionResult<{ role: StaffRole }>> {
   if (!displayName.trim()) {
-    throw new Error("Ingresá tu nombre");
+    return { error: "Ingresá tu nombre" };
   }
 
   const admin = createAdminClient();
@@ -33,7 +34,7 @@ export async function loginStaff(
     .maybeSingle();
 
   if (!cred || !cred.active || !(await verifyPassword(password, cred.password_hash))) {
-    throw new Error("Usuario o contraseña incorrectos");
+    return { error: "Usuario o contraseña incorrectos" };
   }
 
   await admin
@@ -59,13 +60,13 @@ export async function loginStaff(
   return { role: cred.role as StaffRole };
 }
 
-export async function scanTicket(qrCode: string): Promise<ScanResult> {
+export async function scanTicket(qrCode: string): Promise<ActionResult<ScanResult>> {
   const cookieStore = await cookies();
   const token = cookieStore.get(STAFF_COOKIE_NAME)?.value;
   const session = token ? await verifyStaffSession(token) : null;
 
   if (!session) {
-    throw new Error("Sesión de staff inválida, volvé a ingresar por el link.");
+    return { error: "Sesión de staff inválida, volvé a ingresar por el link." };
   }
 
   const admin = createAdminClient();
@@ -74,19 +75,19 @@ export async function scanTicket(qrCode: string): Promise<ScanResult> {
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message ?? "Error al escanear");
+    return { error: error?.message ?? "Error al escanear" };
   }
 
   return data as ScanResult;
 }
 
-export async function raiseAlert(reason?: string) {
+export async function raiseAlert(reason?: string): Promise<ActionResult<{ ok: true }>> {
   const cookieStore = await cookies();
   const token = cookieStore.get(STAFF_COOKIE_NAME)?.value;
   const session = token ? await verifyStaffSession(token) : null;
 
   if (!session) {
-    throw new Error("Sesión de staff inválida, volvé a ingresar por el link.");
+    return { error: "Sesión de staff inválida, volvé a ingresar por el link." };
   }
 
   const admin = createAdminClient();
@@ -96,5 +97,6 @@ export async function raiseAlert(reason?: string) {
     reason: reason?.trim() || null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
+  return { ok: true };
 }

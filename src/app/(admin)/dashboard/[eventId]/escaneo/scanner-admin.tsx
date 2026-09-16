@@ -3,11 +3,11 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { scanTicketAsAdmin } from "./actions";
-import QrScanner, { type ScanResult } from "@/components/qr-scanner";
+import QrScanner from "@/components/qr-scanner";
 
 export default function ScannerAdmin({ eventId }: { eventId: string }) {
   const onScan = useCallback(
-    (qrCode: string): Promise<ScanResult> => scanTicketAsAdmin(eventId, qrCode),
+    (qrCode: string) => scanTicketAsAdmin(eventId, qrCode),
     [eventId],
   );
 

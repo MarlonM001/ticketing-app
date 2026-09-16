@@ -6,6 +6,7 @@ import CreditBanner from "../../../credit-banner";
 import RoleIcon from "@/components/role-icon";
 import { notifyRole } from "../../../actions";
 import type { StaffRole } from "@/lib/staff-session";
+import { isActionError } from "@/lib/action-result";
 
 type Product = { id: string; name: string; price_cents: number; stock_quantity: number | null };
 
@@ -36,16 +37,15 @@ export default function AsistenciaClient({
   function sendNotify() {
     if (!notifyMessage.trim()) return;
     startTransition(async () => {
-      try {
-        await notifyRole("caja", notifyMessage.trim());
+      const res = await notifyRole("caja", notifyMessage.trim());
+      if (isActionError(res)) {
+        setNotifyStatus(res.error);
+      } else {
         setNotifyStatus("Enviado ✓");
         setNotifyMessage("");
         setNotifyOpen(false);
-      } catch (err) {
-        setNotifyStatus(err instanceof Error ? err.message : "No se pudo enviar");
-      } finally {
-        setTimeout(() => setNotifyStatus(null), 2500);
       }
+      setTimeout(() => setNotifyStatus(null), 2500);
     });
   }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { loginStaff } from "../actions";
 import RoleIcon from "@/components/role-icon";
 import type { StaffRole } from "@/lib/staff-session";
+import { isActionError } from "@/lib/action-result";
 
 const ROLES: StaffRole[] = ["puerta", "caja", "mesero", "dj"];
 const ROLE_LABEL: Record<StaffRole, string> = {
@@ -26,18 +27,18 @@ export default function ActivateClient({ eventId }: { eventId: string }) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    try {
-      const { role } = await loginStaff(eventId, username.trim(), password, name.trim());
-      if (role === "puerta") {
-        router.replace(`/scan/${eventId}`);
-      } else if (role === "caja") {
-        router.replace(`/caja/${eventId}`);
-      } else {
-        router.replace(`/scan/${eventId}/asistencia`);
-      }
-    } catch (err) {
+    const res = await loginStaff(eventId, username.trim(), password, name.trim());
+    if (isActionError(res)) {
       setLoading(false);
-      setError(err instanceof Error ? err.message : "Error");
+      setError(res.error);
+      return;
+    }
+    if (res.role === "puerta") {
+      router.replace(`/scan/${eventId}`);
+    } else if (res.role === "caja") {
+      router.replace(`/caja/${eventId}`);
+    } else {
+      router.replace(`/scan/${eventId}/asistencia`);
     }
   }
 

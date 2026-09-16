@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { orderForSelf } from "./actions";
+import { isActionError } from "@/lib/action-result";
 
 type Product = { id: string; name: string; price_cents: number; stock_quantity: number | null };
 
@@ -30,28 +31,25 @@ export default function OrderPanel({
 
     setPendingId(product.id);
     startTransition(async () => {
-      try {
-        const res = await orderForSelf(product.id);
-        if (res.result === "ok") {
-          setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock }));
-          if (res.used_credit) {
-            setCredit((prev) => Math.max(0, prev - product.price_cents));
-            setMessage(`🎁 Pediste ${product.name} — de cortesía, no te descuenta nada`);
-          } else {
-            setMessage(`✔ Pediste ${product.name} — se descuenta de tu sueldo`);
-          }
-        } else if (res.result === "out_of_stock") {
-          setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock ?? 0 }));
-          setMessage(`Sin stock de ${res.product_name ?? product.name}`);
+      const res = await orderForSelf(product.id);
+      if (isActionError(res)) {
+        setMessage(res.error);
+      } else if (res.result === "ok") {
+        setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock }));
+        if (res.used_credit) {
+          setCredit((prev) => Math.max(0, prev - product.price_cents));
+          setMessage(`🎁 Pediste ${product.name} — de cortesía, no te descuenta nada`);
         } else {
-          setMessage("No se pudo registrar el pedido");
+          setMessage(`✔ Pediste ${product.name} — se descuenta de tu sueldo`);
         }
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Error al pedir");
-      } finally {
-        setPendingId(null);
-        setTimeout(() => setMessage(null), 2000);
+      } else if (res.result === "out_of_stock") {
+        setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock ?? 0 }));
+        setMessage(`Sin stock de ${res.product_name ?? product.name}`);
+      } else {
+        setMessage("No se pudo registrar el pedido");
       }
+      setPendingId(null);
+      setTimeout(() => setMessage(null), 2000);
     });
   }
 

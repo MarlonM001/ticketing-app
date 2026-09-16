@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ScanResult } from "@/lib/scan-result";
+import { isActionError, type ActionResult } from "@/lib/action-result";
 
-export type ScanResult = {
-  result: "ok_in" | "ok_out" | "pending" | "invalid";
-  guest_name: string | null;
-  ticket_type_name: string | null;
-  scanned_at: string | null;
-};
+export type { ScanResult };
 
 const STATE_STYLES: Record<ScanResult["result"], { label: string; className: string }> = {
   ok_in: { label: "OK — INGRESA", className: "bg-lime-600 border-lime-400" },
@@ -21,7 +18,7 @@ export default function QrScanner({
   header,
   floatingButtons,
 }: {
-  onScan: (qrCode: string) => Promise<ScanResult>;
+  onScan: (qrCode: string) => Promise<ActionResult<ScanResult>>;
   header?: React.ReactNode;
   floatingButtons?: React.ReactNode;
 }) {
@@ -62,7 +59,11 @@ export default function QrScanner({
           }
           try {
             const res = await onScanRef.current(decodedText);
-            setResult(res);
+            if (isActionError(res)) {
+              setError(res.error);
+            } else {
+              setResult(res);
+            }
           } catch (err) {
             setError(err instanceof Error ? err.message : "Error al escanear");
           } finally {

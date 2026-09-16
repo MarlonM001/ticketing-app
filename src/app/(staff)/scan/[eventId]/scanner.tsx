@@ -6,6 +6,7 @@ import OrderPanel from "../../order-panel";
 import CreditBanner from "../../credit-banner";
 import RoleIcon from "@/components/role-icon";
 import QrScanner from "@/components/qr-scanner";
+import { isActionError } from "@/lib/action-result";
 
 type Product = { id: string; name: string; price_cents: number; stock_quantity: number | null };
 
@@ -24,13 +25,10 @@ export default function Scanner({
 
   function sendAlert() {
     startAlertTransition(async () => {
-      try {
-        await raiseAlert();
-        setAlertSent(true);
-        setTimeout(() => setAlertSent(false), 3000);
-      } catch {
-        // no-op: el botón de alerta no debe bloquear el escaneo
-      }
+      const res = await raiseAlert();
+      if (isActionError(res)) return; // no-op: el botón de alerta no debe bloquear el escaneo
+      setAlertSent(true);
+      setTimeout(() => setAlertSent(false), 3000);
     });
   }
 

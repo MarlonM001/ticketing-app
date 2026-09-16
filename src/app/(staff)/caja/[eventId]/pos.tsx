@@ -6,6 +6,7 @@ import OrderPanel from "../../order-panel";
 import CreditBanner from "../../credit-banner";
 import RoleIcon from "@/components/role-icon";
 import { resolveNotification, type StaffNotification } from "../../actions";
+import { isActionError } from "@/lib/action-result";
 
 type Product = { id: string; name: string; price_cents: number; stock_quantity: number | null };
 type StaffAccount = { id: string; username: string; role: string };
@@ -45,7 +46,9 @@ export default function Pos({
 
   function dismiss(id: string) {
     setDismissedIds((prev) => [...prev, id]);
-    startTransition(() => resolveNotification(id));
+    startTransition(() => {
+      void resolveNotification(id);
+    });
   }
 
   const visibleNotifications = notifications.filter((n) => !dismissedIds.includes(n.id));
@@ -58,28 +61,25 @@ export default function Pos({
 
     setPendingId(product.id);
     startTransition(async () => {
-      try {
-        const res = await sellProduct(product.id, 1, staffAccount?.id);
-        if (res.result === "ok") {
-          setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock }));
-          if (!staffAccount) setSessionTotalCents((prev) => prev + product.price_cents);
-          setMessage(
-            staffAccount
-              ? `✔ ${product.name} cargado a ${staffAccount.username}`
-              : `✔ ${product.name} vendido`,
-          );
-        } else if (res.result === "out_of_stock") {
-          setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock ?? 0 }));
-          setMessage(`Sin stock de ${res.product_name ?? product.name}`);
-        } else {
-          setMessage("No se pudo registrar la venta");
-        }
-      } catch (err) {
-        setMessage(err instanceof Error ? err.message : "Error al vender");
-      } finally {
-        setPendingId(null);
-        setTimeout(() => setMessage(null), 2000);
+      const res = await sellProduct(product.id, 1, staffAccount?.id);
+      if (isActionError(res)) {
+        setMessage(res.error);
+      } else if (res.result === "ok") {
+        setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock }));
+        if (!staffAccount) setSessionTotalCents((prev) => prev + product.price_cents);
+        setMessage(
+          staffAccount
+            ? `✔ ${product.name} cargado a ${staffAccount.username}`
+            : `✔ ${product.name} vendido`,
+        );
+      } else if (res.result === "out_of_stock") {
+        setStockById((prev) => ({ ...prev, [product.id]: res.remaining_stock ?? 0 }));
+        setMessage(`Sin stock de ${res.product_name ?? product.name}`);
+      } else {
+        setMessage("No se pudo registrar la venta");
       }
+      setPendingId(null);
+      setTimeout(() => setMessage(null), 2000);
     });
   }
 

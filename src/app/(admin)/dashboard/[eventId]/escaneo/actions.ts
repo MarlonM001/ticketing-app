@@ -2,16 +2,20 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ScanResult } from "@/components/qr-scanner";
+import type { ScanResult } from "@/lib/scan-result";
+import type { ActionResult } from "@/lib/action-result";
 
-export async function scanTicketAsAdmin(eventId: string, qrCode: string): Promise<ScanResult> {
+export async function scanTicketAsAdmin(
+  eventId: string,
+  qrCode: string,
+): Promise<ActionResult<ScanResult>> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    throw new Error("Sesión inválida, volvé a iniciar sesión.");
+    return { error: "Sesión inválida, volvé a iniciar sesión." };
   }
 
   const { data: event } = await supabase
@@ -21,7 +25,7 @@ export async function scanTicketAsAdmin(eventId: string, qrCode: string): Promis
     .maybeSingle();
 
   if (!event) {
-    throw new Error("Evento no encontrado.");
+    return { error: "Evento no encontrado." };
   }
 
   const admin = createAdminClient();
@@ -30,7 +34,7 @@ export async function scanTicketAsAdmin(eventId: string, qrCode: string): Promis
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message ?? "Error al escanear");
+    return { error: error?.message ?? "Error al escanear" };
   }
 
   return data as ScanResult;
